@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User, Mail, Phone, Landmark, ShieldCheck, Globe, HelpCircle, Lock, Camera, RefreshCw, Upload, Image as ImageIcon, ShieldAlert, Trash2, MapPin } from "lucide-react";
+import { User, Mail, Phone, Landmark, ShieldCheck, Globe, HelpCircle, Lock, Camera, RefreshCw, Upload, Image as ImageIcon, ShieldAlert, Trash2, MapPin, Eye, EyeOff } from "lucide-react";
 import { motion } from "motion/react";
+import { authClient } from "../../lib/auth-client";
 
 interface RegistrationFormProps {
   onRegisterSuccess: (profile: any) => void;
@@ -13,7 +14,10 @@ export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: 
   const [phone, setPhone] = useState(defaultProfile?.phone || "");
   const [wipayAccount, setWipayAccount] = useState(defaultProfile?.wipayAccount || "");
   const [wipayLink, setWipayLink] = useState(defaultProfile?.wipayLink || "");
-  const [country, setCountry] = useState(defaultProfile?.country || "TT");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [country, setCountry] = useState(defaultProfile?.country || "JM");
   const [town, setTown] = useState(defaultProfile?.town || "");
   const [age, setAge] = useState(defaultProfile?.age || "");
   const [gender, setGender] = useState(defaultProfile?.gender || "");
@@ -201,6 +205,16 @@ export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: 
       return;
     }
 
+    if (!password || password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     if (demographicOptIn && !idPhoto) {
       setError("Compliance check incomplete: Please capture or upload a redacted Photo ID to qualify for the 2x Payout Multiplier. Or scale down and untick the 'Opt-in for 2x Payout Multiplier' option.");
       return;
@@ -208,23 +222,36 @@ export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: 
 
     setLoading(true);
     try {
-      const response = await fetch("/api/profile", {
+      // Step 1: Create Better Auth account (session cookie set automatically)
+      const { data: authData, error: authError } = await authClient.signUp.email({
+        email,
+        password,
+        name: fullName,
+      });
+
+      if (authError) {
+        throw new Error(authError.message || "Account creation failed.");
+      }
+
+      // Step 2: Save contributor-specific profile data (session cookie authenticates)
+      const profileRes = await fetch("/api/profile/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
-          fullName, email, phone, wipayAccount, wipayLink, country, town,
-          age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto
+          phone, wipayAccount, wipayLink, country, town,
+          age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto,
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Profile validation failed");
+      const profileData = await profileRes.json();
+      if (!profileRes.ok) {
+        throw new Error(profileData.error || "Profile update failed.");
       }
 
-      onRegisterSuccess(data.user);
+      onRegisterSuccess(profileData.user);
     } catch (err: any) {
-      setError(err?.message || "Failed to save profile. Connect with support.");
+      setError(err?.message || "Failed to create account. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -286,6 +313,43 @@ export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: 
               className="w-full pl-10 pr-4 py-3 bg-[#070b16] border border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all text-slate-100 placeholder-slate-600 font-medium"
               required
             />
+          </div>
+        </div>
+
+        {/* Password */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label htmlFor="reg-password" className="text-xs font-bold text-slate-300 font-mono tracking-wide block">PASSWORD <span className="text-emerald-500">*</span></label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3.5 w-4 h-4 text-emerald-500/60" />
+              <input
+                id="reg-password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Min 8 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-10 pr-10 py-3 bg-[#070b16] border border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all text-slate-100 placeholder-slate-600 font-medium"
+                required
+              />
+              <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300">
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="reg-confirm-password" className="text-xs font-bold text-slate-300 font-mono tracking-wide block">CONFIRM PASSWORD <span className="text-emerald-500">*</span></label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3.5 w-4 h-4 text-emerald-500/60" />
+              <input
+                id="reg-confirm-password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Repeat password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-[#070b16] border border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all text-slate-100 placeholder-slate-600 font-medium"
+                required
+              />
+            </div>
           </div>
         </div>
 

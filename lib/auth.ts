@@ -40,17 +40,18 @@ export const auth = betterAuth({
           const userId = newUser.id; // Use Better Auth's user.id as our userId
 
           try {
+            // Create skeleton profile — contributor fills in the rest via /api/profile/update
             database.createProfile({
               userId,
               fullName: newUser.name,
               email: newUser.email,
-              phone: (newUser as any).phone || "",
-              wipayAccount: (newUser as any).wipayAccount || "",
-              wipayLink: (newUser as any).wipayLink || "",
-              country,
-              town: (newUser as any).town || "",
-              age: (newUser as any).age || null,
-              gender: (newUser as any).gender || "",
+              phone: "",
+              wipayAccount: "",
+              wipayLink: "",
+              country: "JM",
+              town: "",
+              age: null,
+              gender: "",
               educationLevel: null,
               school: null,
               singleParentHome: false,
@@ -58,7 +59,6 @@ export const auth = betterAuth({
               idPhoto: "",
             });
           } catch (err: any) {
-            // Profile may already exist — non-fatal
             if (!err.message?.includes("UNIQUE constraint")) {
               console.error("[auth hook] Failed to create profile:", err);
             }

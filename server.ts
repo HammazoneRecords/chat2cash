@@ -101,7 +101,39 @@ app.get("/api/config", (req, res) => {
   });
 });
 
-// Profile Registration & Reconciliation Key Retrieval
+// Profile update — called after Better Auth signUp to save contributor-specific fields
+app.post("/api/profile/update", requireSession, (req: any, res) => {
+  const userId = req.session.user.id;
+  const { phone, wipayAccount, wipayLink, country, town, age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto } = req.body;
+
+  if (demographicOptIn && !idPhoto) {
+    return res.status(400).json({ error: "Photo ID required for 2x Payout Multiplier." });
+  }
+
+  try {
+    database.updateProfile(userId, {
+      phone: phone || "",
+      wipayAccount: wipayAccount || "",
+      wipayLink: wipayLink || "",
+      country: country || "JM",
+      town: town || "",
+      age: Number(age) || null,
+      gender: gender || "",
+      educationLevel: educationLevel || null,
+      school: school || null,
+      singleParentHome: singleParentHome ? 1 : 0,
+      demographicOptIn: demographicOptIn ? 1 : 0,
+      idPhoto: idPhoto || "",
+    });
+
+    const user = database.getProfile(userId);
+    res.json({ success: true, user });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Profile update failed." });
+  }
+});
+
+// Legacy registration endpoint — kept for backward compat, Better Auth flow is preferred
 app.post("/api/profile", (req, res) => {
   const { email, phone, fullName, wipayAccount, wipayLink, country, town, age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto } = req.body;
   
