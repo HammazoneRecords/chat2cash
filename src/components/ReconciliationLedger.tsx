@@ -262,23 +262,23 @@ export default function ReconciliationLedger() {
 
                     {/* WiPay Logs */}
                     <td className="py-5 px-6 text-right space-y-1">
-                      {d.transaction ? (
+                      {d.payoutAmount ? (
                         <>
                           <div className="text-white font-display font-extrabold text-sm">
                             {d.currency} {d.payoutAmount.toLocaleString(undefined, { minimumFractionDigits: 1 })}
                           </div>
-                          <div className="text-[10px] font-mono text-slate-500 truncate max-w-[140px] inline-block" title={d.transaction.transactionId}>
-                            {d.transaction.transactionId}
+                          <div className="text-[10px] font-mono text-slate-500">
+                            {d.status}
                           </div>
                           <div className="flex items-center gap-1 justify-end text-[9px] font-semibold text-slate-400 font-mono">
                             <Landmark className="w-3 h-3 text-slate-500" />
-                            <span className={d.transaction.status === "PENDING" ? "text-amber-400" : "text-emerald-450"}>
-                              {d.transaction.wipayResponse?.recipient?.account_number || "Escrow Link"} ({d.transaction.status})
+                            <span className={d.status === "Pending Review" ? "text-amber-400" : "text-emerald-450"}>
+                              {d.status === "Disbursed" ? "✓ Disbursed" : "⏳ " + d.status}
                             </span>
                           </div>
                         </>
                       ) : (
-                        <span className="text-slate-550 text-[11px] italic font-mono">- No active claims -</span>
+                        <span className="text-slate-550 text-[11px] italic font-mono">- No payout data -</span>
                       )}
                     </td>
                   </tr>
