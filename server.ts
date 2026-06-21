@@ -3,6 +3,8 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./lib/auth";
 import { database } from "./db";
 
 dotenv.config();
@@ -51,6 +53,31 @@ function rateLimit(req: express.Request, res: express.Response, next: express.Ne
 }
 
 app.use(rateLimit);
+
+// Better Auth — handles all /api/auth/* routes (signup, signin, signout, session)
+app.all("/api/auth/*", toNodeHandler(auth));
+
+// Session middleware — attaches session to req for protected routes
+async function requireSession(req: any, res: express.Response, next: express.NextFunction) {
+  const session = await auth.api.getSession({ headers: req.headers as any });
+  if (!session) {
+    return res.status(401).json({ error: "Authentication required. Please sign in." });
+  }
+  req.session = session;
+  next();
+}
+
+async function requireAdmin(req: any, res: express.Response, next: express.NextFunction) {
+  const session = await auth.api.getSession({ headers: req.headers as any });
+  if (!session) {
+    return res.status(401).json({ error: "Authentication required." });
+  }
+  if (session.user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required." });
+  }
+  req.session = session;
+  next();
+}
 
 // --- API Endpoints ---
 
@@ -318,7 +345,7 @@ function evaluateDialogueLocally(d: { prompt: string; response: string }) {
 }
 
 // Main Endpoint: Anonymize WhatsApp Chats & Run AI evaluation for usefulness
-app.post("/api/process-chat", async (req, res) => {
+app.post("/api/process-chat", requireSession, async (req, res) => {
   try {
     const { chatText, fileName, userId } = req.body;
 
@@ -566,7 +593,7 @@ Respond strictly in valid JSON:
 
 // Returns the contributor's WiPay payout link for admin to manually disburse
 // No merchant API key needed — WiPay provides a payout link per contributor
-app.post("/api/payouts", (req, res) => {
+app.post("/api/payouts", requireAdmin, (req, res) => {
   const { datasetId, userId, amount, currency } = req.body;
 
   if (!datasetId || !userId || !amount) {
@@ -607,7 +634,7 @@ app.post("/api/payouts", (req, res) => {
   });
 });
 
-app.post("/api/admin/payout-approve", (req, res) => {
+app.post("/api/admin/payout-approve", requireAdmin, (req, res) => {
   const { datasetId } = req.body;
   const dataset = database.getDataset(datasetId);
   if (!dataset) {

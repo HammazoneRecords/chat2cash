@@ -1,0 +1,72 @@
+import { betterAuth } from "better-auth";
+import Database from "better-sqlite3";
+
+const sqlite = new Database("chat2cash.db");
+
+export const auth = betterAuth({
+  database: {
+    db: sqlite,
+    type: "sqlite",
+  },
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+  },
+  session: {
+    expiresIn: 60 * 60 * 24 * 30, // 30 days
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 5,
+    },
+  },
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        defaultValue: "contributor",
+        input: false, // only set server-side
+      },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // After Better Auth creates a user, create the matching profile row
+        after: async (newUser) => {
+          const { database } = await import("../db");
+          const cleanPhone = (newUser as any).phone?.replace(/\D/g, "") || "";
+          const country = (newUser as any).country || "JM";
+          const numericSuffix = cleanPhone.slice(-6) || Math.floor(100000 + Math.random() * 900000).toString();
+          const userId = newUser.id; // Use Better Auth's user.id as our userId
+
+          try {
+            database.createProfile({
+              userId,
+              fullName: newUser.name,
+              email: newUser.email,
+              phone: (newUser as any).phone || "",
+              wipayAccount: (newUser as any).wipayAccount || "",
+              wipayLink: (newUser as any).wipayLink || "",
+              country,
+              town: (newUser as any).town || "",
+              age: (newUser as any).age || null,
+              gender: (newUser as any).gender || "",
+              educationLevel: null,
+              school: null,
+              singleParentHome: false,
+              demographicOptIn: false,
+              idPhoto: "",
+            });
+          } catch (err: any) {
+            // Profile may already exist — non-fatal
+            if (!err.message?.includes("UNIQUE constraint")) {
+              console.error("[auth hook] Failed to create profile:", err);
+            }
+          }
+        },
+      },
+    },
+  },
+});
+
+export type Session = typeof auth.$Infer.Session;
