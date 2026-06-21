@@ -27,9 +27,43 @@ if (!DEEPSEEK_API_KEY) {
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// Simple rate limiter (in-memory; not suitable for multi-process)
+// For production: use redis-rate-limiter or equivalent
+const requestCounts = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX = 100; // 100 requests per minute per IP
+
+function rateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const ip = req.ip || "unknown";
+  const now = Date.now();
+  const record = requestCounts.get(ip);
+
+  if (record && now < record.resetAt) {
+    record.count++;
+    if (record.count > RATE_LIMIT_MAX) {
+      return res.status(429).json({ error: "Rate limit exceeded. Please wait before making more requests." });
+    }
+  } else {
+    requestCounts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+  }
+
+  next();
+}
+
+app.use(rateLimit);
+
 // --- API Endpoints ---
 
-// Get health / system configuration details
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Get system configuration details
 app.get("/api/config", (req, res) => {
   res.json({
     status: "ok",
