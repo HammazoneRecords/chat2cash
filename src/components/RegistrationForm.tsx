@@ -12,6 +12,7 @@ export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: 
   const [email, setEmail] = useState(defaultProfile?.email || "");
   const [phone, setPhone] = useState(defaultProfile?.phone || "");
   const [wipayAccount, setWipayAccount] = useState(defaultProfile?.wipayAccount || "");
+  const [wipayLink, setWipayLink] = useState(defaultProfile?.wipayLink || "");
   const [country, setCountry] = useState(defaultProfile?.country || "TT");
   const [town, setTown] = useState(defaultProfile?.town || "");
   const [age, setAge] = useState(defaultProfile?.age || "");
@@ -195,8 +196,8 @@ export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: 
     e.preventDefault();
     setError("");
 
-    if (!fullName.trim() || !email.trim() || !phone.trim() || !wipayAccount.trim() || !age || !gender.trim() || !town.trim()) {
-      setError("Please complete all required demographic, location, and payment fields including town, age and gender.");
+    if (!fullName.trim() || !email.trim() || !phone.trim() || !wipayAccount.trim() || !wipayLink.trim() || !age || !gender.trim() || !town.trim()) {
+      setError("Please complete all required fields: name, email, phone, town, age, gender, WiPay account, and WiPay payout link.");
       return;
     }
 
@@ -210,9 +211,9 @@ export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: 
       const response = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          fullName, email, phone, wipayAccount, country, town, 
-          age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto 
+        body: JSON.stringify({
+          fullName, email, phone, wipayAccount, wipayLink, country, town,
+          age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto
         }),
       });
 
@@ -469,6 +470,29 @@ export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: 
               placeholder="e.g. 1908273"
               value={wipayAccount}
               onChange={(e) => setWipayAccount(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-[#050810] border border-emerald-900/50 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/15 focus:border-emerald-500 transition-all text-white placeholder-emerald-900/60"
+              required
+            />
+          </div>
+        </div>
+
+        {/* WiPay Payout Link */}
+        <div className="space-y-2.5 p-5 rounded-2xl bg-emerald-950/20 border border-emerald-900/40">
+          <label htmlFor="reg-wipayLink" className="text-xs font-bold text-emerald-300 flex items-center gap-1.5 font-mono">
+            <Landmark className="w-3.5 h-3.5 text-emerald-400" />
+            WIPAY PAYOUT LINK
+          </label>
+          <p className="text-[11px] text-slate-400 leading-normal">
+            Provide your personalized WiPay payout link where we'll disburse your earnings. <a href="https://wipaycaribbean.com/jamaica" target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">Get your link →</a>
+          </p>
+          <div className="relative">
+            <ShieldCheck className="absolute left-3 top-3.5 w-4 h-4 text-emerald-400" />
+            <input
+              id="reg-wipayLink"
+              type="url"
+              placeholder="https://pay.wipaycaribbean.com/..."
+              value={wipayLink}
+              onChange={(e) => setWipayLink(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-[#050810] border border-emerald-900/50 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/15 focus:border-emerald-500 transition-all text-white placeholder-emerald-900/60"
               required
             />
