@@ -6,48 +6,49 @@ import {
 import { motion } from "motion/react";
 import LandingHero from "./components/LandingHero";
 import RegistrationForm from "./components/RegistrationForm";
+import LoginForm from "./components/LoginForm";
 import FileProcessor from "./components/FileProcessor";
 import ReconciliationLedger from "./components/ReconciliationLedger";
 import { UserProfile, ProcessedDataset } from "./types";
+import { authClient } from "../lib/auth-client";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'anonymize' | 'ledger'>('home');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [systemConfig, setSystemConfig] = useState<any>(null);
-  
+
   // Scroll to top on active tab change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [activeTab]);
 
-  // Check if profile exists in localstorage
+  // Restore session from Better Auth on mount
   useEffect(() => {
-    const saved = localStorage.getItem("purifier_user_profile") || localStorage.getItem("chat2cash_user_profile");
-    if (saved) {
-      try {
-        setUserProfile(JSON.parse(saved));
-      } catch (err) {
-        console.error("Failed to restore saved profile", err);
-      }
-    }
+    fetch("/api/me", { credentials: "include" })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data?.user) setUserProfile(data.user); })
+      .catch(() => {});
 
-    // Fetch Express API Config
     fetch("/api/config")
       .then((res) => res.json())
       .then((data) => setSystemConfig(data))
-      .catch((err) => console.error("Failed to load server configuration details", err));
+      .catch((err) => console.error("Failed to load server configuration", err));
   }, []);
 
   const handleRegisterSuccess = (profile: UserProfile) => {
     setUserProfile(profile);
-    localStorage.setItem("chat2cash_user_profile", JSON.stringify(profile));
-    setActiveTab('anonymize'); // take straight to uploading
+    setActiveTab('anonymize');
   };
 
-  const handleLogout = () => {
+  const handleLoginSuccess = (profile: UserProfile) => {
+    setUserProfile(profile);
+    setActiveTab('anonymize');
+  };
+
+  const handleLogout = async () => {
+    await authClient.signOut();
     setUserProfile(null);
-    localStorage.removeItem("purifier_user_profile");
-    localStorage.removeItem("chat2cash_user_profile");
     setActiveTab('home');
   };
 
@@ -136,16 +137,23 @@ export default function App() {
                 </button>
               </motion.div>
             ) : (
-              <button
-                id="btn-nav-login"
-                onClick={() => {
-                  setActiveTab('anonymize');
-                }}
-                className="px-4 py-2 border border-slate-700 bg-[#0d1527] hover:bg-slate-800 rounded-xl text-xs font-bold text-slate-200 transition-all flex items-center gap-1.5"
-              >
-                <LogIn className="w-3.5 h-3.5 text-slate-400" />
-                <span>Sign In</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  id="btn-nav-login"
+                  onClick={() => { setAuthMode('signin'); setActiveTab('anonymize'); }}
+                  className="px-4 py-2 border border-slate-700 bg-[#0d1527] hover:bg-slate-800 rounded-xl text-xs font-bold text-slate-200 transition-all flex items-center gap-1.5"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Sign In</span>
+                </button>
+                <button
+                  id="btn-nav-register"
+                  onClick={() => { setAuthMode('signup'); setActiveTab('anonymize'); }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white transition-all"
+                >
+                  Get Started
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -166,7 +174,17 @@ export default function App() {
           <div className="space-y-6">
             {!userProfile ? (
               <div className="py-2">
-                <RegistrationForm onRegisterSuccess={handleRegisterSuccess} />
+                {authMode === 'signin' ? (
+                  <LoginForm
+                    onLoginSuccess={handleLoginSuccess}
+                    onSwitchToRegister={() => setAuthMode('signup')}
+                  />
+                ) : (
+                  <RegistrationForm
+                    onRegisterSuccess={handleRegisterSuccess}
+                    onSwitchToLogin={() => setAuthMode('signin')}
+                  />
+                )}
               </div>
             ) : (
               <FileProcessor user={userProfile} onDatasetCreated={onNewDatasetCreated} />

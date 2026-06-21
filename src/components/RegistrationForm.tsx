@@ -5,10 +5,11 @@ import { authClient } from "../../lib/auth-client";
 
 interface RegistrationFormProps {
   onRegisterSuccess: (profile: any) => void;
+  onSwitchToLogin?: () => void;
   defaultProfile?: any;
 }
 
-export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: RegistrationFormProps) {
+export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, defaultProfile }: RegistrationFormProps) {
   const [fullName, setFullName] = useState(defaultProfile?.fullName || "");
   const [email, setEmail] = useState(defaultProfile?.email || "");
   const [phone, setPhone] = useState(defaultProfile?.phone || "");
@@ -753,6 +754,19 @@ export default function RegistrationForm({ onRegisterSuccess, defaultProfile }: 
             Strict anti-fraud escrow lock: Clearing proceeds take <strong>7-14 business days</strong> for model validity assurance. Saved data is strictly mapped.
           </span>
         </div>
+
+        {onSwitchToLogin && (
+          <p className="text-center text-xs text-slate-400">
+            Already have an account?{" "}
+            <button
+              type="button"
+              onClick={onSwitchToLogin}
+              className="text-emerald-400 font-bold hover:text-emerald-300 transition-colors"
+            >
+              Sign in →
+            </button>
+          </p>
+        )}
       </form>
     </motion.div>
   );

@@ -81,6 +81,16 @@ async function requireAdmin(req: any, res: express.Response, next: express.NextF
 
 // --- API Endpoints ---
 
+// Current session user + profile — used to restore session on page load
+app.get("/api/me", requireSession, (req: any, res) => {
+  const userId = req.session.user.id;
+  const user = database.getProfile(userId);
+  if (!user) {
+    return res.status(404).json({ error: "Profile not found." });
+  }
+  res.json({ user });
+});
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({
