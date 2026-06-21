@@ -97,7 +97,7 @@ app.get("/api/config", (req, res) => {
 
 // Profile Registration & Reconciliation Key Retrieval
 app.post("/api/profile", (req, res) => {
-  const { email, phone, fullName, wipayAccount, country, town, age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto } = req.body;
+  const { email, phone, fullName, wipayAccount, wipayLink, country, town, age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto } = req.body;
   
   if (!email || !phone || !fullName || !age || !gender) {
     return res.status(400).json({ error: "Email, phone number, full name, age, and gender are required." });
@@ -122,6 +122,7 @@ app.post("/api/profile", (req, res) => {
     email,
     phone,
     wipayAccount: wipayAccount || "",
+    wipayLink: wipayLink || "",
     country: country || "JM",
     town: town || "",
     age: Number(age),
@@ -578,68 +579,48 @@ Respond strictly in valid JSON:
   }
 });
 
-// Initiates a disbursement of funds using WiPay Payment/Payout API Wrapper
+// Returns the contributor's WiPay payout link for admin to manually disburse
+// No merchant API key needed — WiPay provides a payout link per contributor
 app.post("/api/payouts", (req, res) => {
-  const { datasetId, userId, amount, currency, accountNumber, phone } = req.body;
-  
+  const { datasetId, userId, amount, currency } = req.body;
+
   if (!datasetId || !userId || !amount) {
-    return res.status(400).json({ error: "Missing datasetId, userId, or amount for disbursement." });
+    return res.status(400).json({ error: "Missing datasetId, userId, or amount." });
   }
-  
-  const dataset = db.datasets.find(d => d.id === datasetId);
+
+  const dataset = db.datasets.find((d: any) => d.id === datasetId);
   if (!dataset) {
-    return res.status(404).json({ error: "Target dataset not found." });
+    return res.status(404).json({ error: "Dataset not found." });
   }
-  
+
   const profile = db.profiles[userId];
   if (!profile) {
-    return res.status(404).json({ error: "User profile linked to this payout request is missing." });
+    return res.status(404).json({ error: "User profile not found." });
   }
-  
-  // WiPay Payout Simulation with full API log audit trail
+
   const txId = `WIPAY-TX-${Date.now()}`;
-  const mockRefHash = "wpay_sha256_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  
-  // WiPay Carrier Response simulation payload
-  const wipayResponse = {
-    status: "success",
-    msg: "Payout verification queued successfully",
-    transaction_id: txId,
-    amount_paid: amount,
-    currency: currency || "JMD",
-    recipient: {
-      account_number: accountNumber || profile.wipayAccount,
-      phone: phone || profile.phone,
-      email: profile.email,
-    },
-    charges: {
-      fee_wipay: Number((amount * 0.02).toFixed(2)), // 2% gateway processing fee
-      net_disbursement: Number((amount * 0.98).toFixed(2))
-    },
-    release_escrow_holding_days: 14 // compliance check period
-  };
-  
   const transaction: any = {
     transactionId: txId,
     amount: parseFloat(amount),
     currency: currency || "JMD",
     gateway: "WiPay",
-    status: "PENDING", // Stays pending for 7-14 days due to auditing rules
+    status: "PENDING",
     timestamp: new Date().toISOString(),
-    referenceHash: mockRefHash,
-    wipayResponse,
+    wipayLink: (profile as any).wipayLink || null,
+    recipientAccount: profile.wipayAccount,
+    recipientPhone: profile.phone,
+    recipientEmail: profile.email,
   };
-  
-  // Update dataset status and append transaction audit logs
-  dataset.status = "Approved"; // Moved from Pending Review to Approved
+
+  dataset.status = "Approved";
   dataset.transaction = transaction;
-  
   db.transactions.push(transaction);
   saveDb();
-  
+
   res.json({
     success: true,
-    message: "Disbursement securely initiated via WiPay. Pending dataset audit verification (7-14 days clearing window).",
+    message: "Payout queued. Use the WiPay link below to disburse funds to the contributor.",
+    wipayLink: (profile as any).wipayLink || null,
     transaction,
   });
 });

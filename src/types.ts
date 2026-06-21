@@ -3,7 +3,8 @@ export interface UserProfile {
   fullName: string;
   email: string;
   phone: string;
-  wipayAccount: string; // The WiPay account/wallet to disburse funds to
+  wipayAccount: string; // WiPay account number (for display / reference)
+  wipayLink?: string;  // WiPay payout link provided by WiPay — admin uses this to disburse
   country: string; // TT, JM, BB, etc.
   town?: string;
   age: number;
