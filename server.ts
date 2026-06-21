@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import { database } from "./db";
 
 dotenv.config();
 
@@ -19,65 +20,8 @@ if (!DEEPSEEK_API_KEY) {
   console.warn("WARNING: DEEPSEEK_API_KEY not set. AI evaluation will fall back to local heuristics.");
 }
 
-// Local persistent JSON storage is ideal for a full-stack proof-of-concept
-// to enable "proper record-keeping and data reconciliation", surviving server restarts.
-const DB_FILE = path.join(process.cwd(), "db.json");
-
-interface DatabaseSchema {
-  profiles: Record<string, {
-    userId: string;
-    fullName: string;
-    email: string;
-    phone: string;
-    wipayAccount: string;
-    wipayLink?: string;
-    country: string;
-    town?: string;
-    age?: number;
-    gender?: string;
-    educationLevel?: string;
-    school?: string;
-    singleParentHome?: boolean;
-    demographicOptIn?: boolean;
-    idPhoto?: string;
-  }>;
-  datasets: any[];
-  transactions: any[];
-}
-
-function initDb(): DatabaseSchema {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      const data = fs.readFileSync(DB_FILE, "utf-8");
-      return JSON.parse(data);
-    }
-  } catch (err) {
-    console.error("Failed to read database file, initializing fresh database", err);
-  }
-  
-  const defaultSchema: DatabaseSchema = {
-    profiles: {},
-    datasets: [],
-    transactions: [],
-  };
-  
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(defaultSchema, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Failed to write initial db.json file", err);
-  }
-  return defaultSchema;
-}
-
-const db = initDb();
-
-function saveDb() {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Failed to save database state to db.json", err);
-  }
-}
+// SQLite database (chat2cash.db) initialized in db.ts with schema and WAL mode
+// All data operations are transactional and concurrent-safe
 
 // Support parsing JSON & URL encoded payloads up to 50MB
 app.use(express.json({ limit: "50mb" }));
@@ -116,8 +60,8 @@ app.post("/api/profile", (req, res) => {
   // e.g. USR-TT-8681234
   const numericSuffix = cleanPhone.slice(-6) || Math.floor(100000 + Math.random() * 900000).toString();
   const userId = `USR-${country || "JM"}-${numericSuffix}`;
-  
-  db.profiles[userId] = {
+
+  const profile = {
     userId,
     fullName,
     email,
@@ -134,21 +78,28 @@ app.post("/api/profile", (req, res) => {
     demographicOptIn: !!demographicOptIn,
     idPhoto: idPhoto || "",
   };
-  
-  saveDb();
-  
+
+  try {
+    database.createProfile(profile);
+  } catch (err: any) {
+    if (err.message?.includes("UNIQUE constraint")) {
+      return res.status(409).json({ error: "Profile with this email already exists." });
+    }
+    throw err;
+  }
+
   res.json({
     success: true,
-    user: db.profiles[userId],
+    user: profile,
   });
 });
 
 // Fetch detailed database statistics & transaction history for reconciliation
 app.get("/api/reconciliation", (req, res) => {
   res.json({
-    datasets: db.datasets,
-    profiles: Object.values(db.profiles),
-    transactions: db.transactions,
+    datasets: database.getAllDatasets(),
+    profiles: database.getAllProfiles(),
+    transactions: database.getAllTransactions(),
   });
 });
 
@@ -336,12 +287,12 @@ function evaluateDialogueLocally(d: { prompt: string; response: string }) {
 app.post("/api/process-chat", async (req, res) => {
   try {
     const { chatText, fileName, userId } = req.body;
-    
+
     if (!chatText || !userId) {
       return res.status(400).json({ error: "Missing required fields: chatText and userId." });
     }
-    
-    const profile = db.profiles[userId];
+
+    const profile = database.getProfile(userId);
     if (!profile) {
       return res.status(404).json({ error: "No user profile found. Please register first for proper record-keeping." });
     }
@@ -566,10 +517,9 @@ Respond strictly in valid JSON:
       dialogues,
       originalLinesPreview: originalLinesPreview.slice(0, 300), // Cap preview list for rendering speed
     };
-    
-    db.datasets.push(dataset);
-    saveDb();
-    
+
+    database.createDataset(dataset);
+
     res.json({
       success: true,
       dataset,
@@ -589,34 +539,31 @@ app.post("/api/payouts", (req, res) => {
     return res.status(400).json({ error: "Missing datasetId, userId, or amount." });
   }
 
-  const dataset = db.datasets.find((d: any) => d.id === datasetId);
+  const dataset = database.getDataset(datasetId);
   if (!dataset) {
     return res.status(404).json({ error: "Dataset not found." });
   }
 
-  const profile = db.profiles[userId];
+  const profile = database.getProfile(userId);
   if (!profile) {
     return res.status(404).json({ error: "User profile not found." });
   }
 
   const txId = `WIPAY-TX-${Date.now()}`;
   const transaction: any = {
-    transactionId: txId,
+    id: txId,
+    userId,
+    datasetId,
     amount: parseFloat(amount),
     currency: currency || "JMD",
     gateway: "WiPay",
     status: "PENDING",
     timestamp: new Date().toISOString(),
-    wipayLink: (profile as any).wipayLink || null,
-    recipientAccount: profile.wipayAccount,
-    recipientPhone: profile.phone,
-    recipientEmail: profile.email,
+    referenceHash: txId,
   };
 
-  dataset.status = "Approved";
-  dataset.transaction = transaction;
-  db.transactions.push(transaction);
-  saveDb();
+  database.createTransaction(transaction);
+  database.updateDataset(datasetId, { status: "Approved" });
 
   res.json({
     success: true,
@@ -628,20 +575,17 @@ app.post("/api/payouts", (req, res) => {
 
 app.post("/api/admin/payout-approve", (req, res) => {
   const { datasetId } = req.body;
-  const dataset = db.datasets.find(d => d.id === datasetId);
+  const dataset = database.getDataset(datasetId);
   if (!dataset) {
     return res.status(404).json({ error: "Dataset not found." });
   }
-  
-  if (dataset.transaction) {
-    dataset.status = "Disbursed";
-    dataset.transaction.status = "SUCCESS";
-  } else {
-    dataset.status = "Approved";
-  }
-  
-  saveDb();
-  res.json({ success: true, dataset });
+
+  database.updateDataset(datasetId, { status: "Disbursed" });
+
+  res.json({
+    success: true,
+    dataset: database.getDataset(datasetId),
+  });
 });
 
 // Serve frontend build static files in production
