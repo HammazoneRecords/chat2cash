@@ -1,7 +1,9 @@
 import { betterAuth } from "better-auth";
 import Database from "better-sqlite3";
+import path from "path";
 
-const sqlite = new Database("chat2cash.db");
+const DATA_DIR = process.env.DATA_DIR || process.cwd();
+const sqlite = new Database(path.join(DATA_DIR, "chat2cash.db"));
 
 export const auth = betterAuth({
   database: {

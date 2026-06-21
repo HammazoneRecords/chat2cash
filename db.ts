@@ -2,8 +2,9 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 
-const DB_PATH = path.join(process.cwd(), "chat2cash.db");
-const BACKUP_PATH = path.join(process.cwd(), `chat2cash.db.bak-${new Date().toISOString().split('T')[0]}`);
+const DATA_DIR = process.env.DATA_DIR || process.cwd();
+const DB_PATH = path.join(DATA_DIR, "chat2cash.db");
+const BACKUP_PATH = path.join(DATA_DIR, `chat2cash.db.bak-${new Date().toISOString().split('T')[0]}`);
 
 export class ChatDB {
   private db: Database.Database;
