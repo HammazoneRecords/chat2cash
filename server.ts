@@ -30,6 +30,7 @@ interface DatabaseSchema {
     email: string;
     phone: string;
     wipayAccount: string;
+    wipayLink?: string;
     country: string;
     town?: string;
     age?: number;
