@@ -1,61 +1,103 @@
-# Hybrid Data Curation Operating Runbook 📘📋
+# Chat2Cash Operating Runbook
 
-This runbook guides engineers, operators, and data auditors in managing, deploying, monitoring, and troubleshooting the hybrid offline-first classification pipeline for Chat2Cash.
-
----
-
-## 1. System Administration & Server Topology
-
-The Chat2Cash data curation pipeline is deployed in high-availability Cloud Run containers, with reverse proxies routing external requests directly through Port `3000`.
-
-- **Primary Entrypoint**: `/server.ts` (Running Express + Vite Middleware)
-- **Engine Process**: Integrates local Javascript/Typescript heuristics with remote validation via Google Generative AI (`@google/genai`).
-- **AI Core**: Powered by the highly modern `gemini-3.5-flash` model mapping server-side.
+Guides for deployment, monitoring, and troubleshooting.
 
 ---
 
-## 2. Standard Operating Procedures
+## 1. System Topology
 
-### A. Deploying Code & Schema Modifications
-Whenever pre-filtering heuristics (e.g. patois keyword collections or regex selectors) are added or modified:
-1. Validate syntax locally by running the target bundler check:
-   ```bash
-   npm run lint
-   ```
-2. Verify production compilation and bundle assets using Esbuild:
-   ```bash
-   npm run build
-   ```
-3. Boot the environment and confirm external Port binding:
-   ```bash
-   npm run start
-   ```
-
-### B. Troubleshooting "API Key Limit" or Failures
-If the remote Gemini API key suffers from regional throttle limits or becomes network-inaccessible:
-1. Check the local `.env` configuration mapping. A valid `GEMINI_API_KEY` must be loaded.
-2. Observe application logs inside the container console.
-3. The server is programmed with automatic **smart statistical heuristics fail-safe**. If the API throws:
-   - Dialogue evaluation immediately falls back to length-based keyword density heuristics.
-   - Payout calculations remain active using localized rule-based estimates.
-   - A descriptive warning is printed to the system logs, allowing users to proceed with zero downtime.
+- **VPS**: Contabo (`161.97.154.222`) — Docker + Nginx
+- **Domain**: `chat2cash.mindwaveja.com` (port 4001)
+- **Container**: `mw-chat2cash` | **Service**: `chat2cash`
+- **Stack**: Vite + React + TS (frontend) · Express + TSX (backend) · Better Auth + SQLite
+- **AI evaluation cascade**: Oreluwa/RunPod → DeepSeek → local heuristics
+- **Data path**: `/opt/mw/chat2cash-data/chat2cash.db` (bind-mounted volume)
 
 ---
 
-## 3. Customizing Pre-Filtering Rules
+## 2. Standard Deploy
 
-To augment or refine the local static rules without requesting model edits, modify the screening arrays directly in `/server.ts` inside the `process-chat` endpoint.
+```bash
+# On VPS
+cd /opt/mw/chat2cash && git pull origin main
+cd /opt/mw && docker compose build --no-cache chat2cash
+docker compose up -d chat2cash
 
-### Recommended Pattern for Adding New Keywords:
-```ts
-// Example: Adding new regional Caribbean jargon to the local filter
-const additionalPatoisKeywords = ["dunno", "bredda", "dawg"];
+# Verify
+docker logs mw-chat2cash --tail 10
+curl http://localhost:4001/api/health
 ```
 
 ---
 
-## 4. Verification Checklists
+## 3. Local Dev
 
-- **Linter Status**: Must remain green pre-commit.
-- **Vocal Notifications**: Verify the Mail sub-system in Stage 4 returns a secured "Notify Me" message on client email sign-up.
-- **Redaction Canvas Integrity**: Redactions must perform locally inside the browser memory block before saving profiles.
+```bash
+cd active_apps/chat2cash
+pnpm install
+pnpm dev          # → http://localhost:4001
+pnpm lint         # TypeScript check
+pnpm run build    # Production build
+```
+
+---
+
+## 4. Activating Oreluwa / RunPod
+
+Add to `/opt/mw/chat2cash/.env` on VPS:
+```
+RUNPOD_API_KEY=<from Oreluwa>
+RUNPOD_ENDPOINT_ID=<from Oreluwa>
+```
+
+Restart: `docker compose restart chat2cash`
+
+Confirm: `curl http://localhost:4001/api/config` → `"aiProvider": "oreluwa"`
+
+---
+
+## 5. AI Fallback Chain
+
+The server auto-selects the best available provider on startup and logs it:
+```
+[AI] Evaluation provider: ORELUWA   ← RunPod active
+[AI] Evaluation provider: DEEPSEEK  ← DeepSeek fallback
+[AI] Evaluation provider: LOCAL     ← no AI keys present
+```
+
+If RunPod fails mid-request, the server falls back to DeepSeek silently. If DeepSeek fails, local heuristics run. Zero downtime in all cases.
+
+---
+
+## 6. Troubleshooting
+
+**Container not starting:**
+```bash
+docker logs mw-chat2cash --tail 30
+```
+
+**Port 4001 not responding:**
+```bash
+docker ps --filter name=mw-chat2cash
+# If exited: docker compose up -d chat2cash
+```
+
+**Env vars not loading:**
+- Verify `/opt/mw/chat2cash/.env` exists and has the required keys
+- Run `docker compose up -d --force-recreate chat2cash` (restart alone doesn't re-read env_file)
+
+**DB backup location:**
+- Auto-backup on each server start: `/opt/mw/chat2cash-data/chat2cash.db.bak-YYYY-MM-DD`
+
+---
+
+## 7. Customizing Pre-Filter Rules
+
+Modify the `evaluateDialogueLocally()` function in `server.ts`.
+
+```ts
+// Add Patois terms to the local filter
+const regionalSlang = ["bredrin", "gyal", "bumboclaat", ...];
+```
+
+Rules run before any AI call — changes take effect on next restart.
