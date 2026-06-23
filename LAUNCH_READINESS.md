@@ -1,56 +1,142 @@
-# Chat2Cash Launch Readiness
-
-**Status: READY FOR LAUNCH**
-
----
-
-## Core Capabilities
-
-### 1. Hybrid Pre-Filtering Engine
-- Two-tier pipeline: local rule classification first, AI evaluation only for ambiguous pairs
-- AI provider cascade: Oreluwa/RunPod → DeepSeek → local heuristics
-- 80% token cost reduction vs sending all turns to LLM
-
-### 2. Privacy & Anonymization
-- All PII stripped client-side before any server contact (names → Speaker A/B, phones → [Phone Redacted], emails → [Email Redacted])
-- Photo ID redaction burns face and TRN regions in browser canvas before upload
-- Server never receives raw personally identifiable data
-
-### 3. Auth & Session Security
-- Better Auth (session cookie, signed)
-- Admin routes protected by role check (`requireAdmin` middleware)
-- Rate limiting: 100 req/min per IP
-
-### 4. Payout System
-- WiPay Caribbean: JMD, TTD, BBD
-- 7-14 day clearing window (fraud and synthetic data prevention)
-- Quality-scaled rates: $0.50–$4 JMD per useful turn; 2x demographic multiplier
+# Chat2Cash Launch Readiness Report
+**Version:** 2.0  
+**Date:** 2026-06-23  
+**Prepared by:** MindWave JA  
+**Status:** ✅ READY FOR USERS — Pending Oreluwa RunPod activation
 
 ---
 
-## Launch Checklist
+## Deployment
 
+| Item | Value |
+|---|---|
+| Live URL | https://chat2cash.mindwaveja.com |
+| Container | `mw-chat2cash` (port 4001) |
+| VPS | Contabo `161.97.154.222` |
+| GitHub | HammazoneRecords/chat2cash |
+| Branch | `main` |
+| Stack | Vite + React + TS · Express · Better Auth · SQLite |
+| Package manager | pnpm (lockfile: `pnpm-lock.yaml`) |
+| Analytics | Umami at `stats.mindwaveja.com` (site ID: `1893e7dc-63b3-4ebc-b0db-fa09b252efde`) |
+
+---
+
+## Feature Checklist
+
+### Core Product
+| Feature | Status | Notes |
+|---|---|---|
+| WhatsApp .txt / .zip upload | ✅ | Accepts both formats |
+| Client-side PII anonymization | ✅ | Names → Speaker A/B, phones/emails redacted in browser before any network call |
+| Photo ID redaction (face + TRN) | ✅ | Burns in canvas locally; server never receives raw image |
+| AI quality evaluation | ✅ | Hybrid: local heuristics pre-filter → AI for ambiguous pairs |
+| Payout calculation | ✅ | $0.50–$4 JMD per useful turn, quality-scaled; 2x demographic multiplier |
+| Dataset download (JSON + CSV) | ✅ | |
+| WiPay payout flow | ✅ | 7-14 day clearing; admin approval queue |
+| Public reconciliation ledger | ✅ | |
+
+### Auth & Security
+| Item | Status | Notes |
+|---|---|---|
+| Better Auth (session cookie) | ✅ | |
+| Rate limiting | ✅ | 100 req/min per IP |
+| Admin-only routes | ✅ | `requireAdmin` middleware on payout endpoints |
+| No Google/AI Studio code | ✅ | Zero refs in all tracked files |
+| No credentials in source | ✅ | All secrets via `/opt/mw/chat2cash/.env` |
+| Self-hosted fonts | ✅ | `@fontsource` — no Google Fonts CDN request |
+
+### AI Evaluation Layer
+| Provider | Status | Notes |
+|---|---|---|
+| Oreluwa / RunPod (primary) | ⏳ | Wired and ready — Oreluwa setting up endpoint |
+| DeepSeek API (fallback) | ✅ | Active now |
+| Local heuristics (offline fallback) | ✅ | Always available |
+| Auto-detection on startup | ✅ | Logs `[AI] Evaluation provider: X` — check via `/api/config` |
+
+### Landing Page
+| Feature | Status |
+|---|---|
+| 2 CTA buttons (Chat2Cash signup + Voice Notes notify) | ✅ |
+| Price comparison: text ($0.50–$4 JMD) vs voice ($300–$7,000 JMD) | ✅ |
+| Voice type caveat copy | ✅ |
+| Live tally stats card (chats, messages, JMD paid) | ✅ |
+| Short text example (~$0.60 JMD) | ✅ |
+| Rich text example (~$3.80 JMD) | ✅ |
+| Voice notes section with 300–7,000 JMD range | ✅ |
+| 2 placeholder voice note cards (with payout badges) | ✅ |
+| Currency conversion guide (JMD / TTD / BBD) | ✅ |
+| Voice notify modal (name, town, age, country, email → DB) | ✅ |
+
+### PWA
+| Feature | Status |
+|---|---|
+| Web manifest | ✅ |
+| c2c SVG logo | ✅ |
+| 192×192 PNG icon | ✅ |
+| 512×512 PNG icon (maskable) | ✅ |
+| Theme color `#022c22` | ✅ |
+| Service worker (autoUpdate) | ✅ |
+| Apple touch icon + mobile meta | ✅ |
+
+### Analytics
 | Item | Status |
 |---|---|
-| Google/AI Studio refs removed from source | ✅ |
-| Self-hosted fonts (no Google Fonts CDN) | ✅ |
-| Auth wired (Better Auth + SQLite) | ✅ |
-| DeepSeek evaluation active | ✅ |
-| Oreluwa/RunPod endpoint | ⏳ Oreluwa setting up |
-| PWA manifest + c2c icons | ✅ |
-| Voice waitlist endpoint | ✅ |
-| VPS deploy at chat2cash.mindwaveja.com | ✅ |
-| Custom domain | ⏳ Purchase pending |
+| Umami tracking script | ✅ |
+| Site created in Umami dashboard | ✅ |
+| Data visible at stats.mindwaveja.com | ✅ (on next visitor) |
 
 ---
 
-## To Activate RunPod
+## Pre-Launch Remaining
 
-Add to `/opt/mw/chat2cash/.env` on VPS:
-```
-RUNPOD_API_KEY=<from Oreluwa>
-RUNPOD_ENDPOINT_ID=<from Oreluwa>
-```
-Then: `docker compose restart chat2cash`
+| Item | Owner | Blocker? |
+|---|---|---|
+| Oreluwa provides `RUNPOD_API_KEY` + `RUNPOD_ENDPOINT_ID` | Oreluwa | No — DeepSeek active as fallback |
+| Add RunPod creds to `/opt/mw/chat2cash/.env` → `docker compose restart chat2cash` | Deego | No |
+| Add `WIPAY_MERCHANT_KEY` to VPS `.env` (currently empty) | Deego | No — demo mode works |
+| Purchase chat2cash domain | Deego | No — subdomain live |
+| Record voice note samples (Deego + female voice) | Deego / Oreluwa | No — placeholder UI is live |
 
-`/api/config` will return `"aiProvider": "oreluwa"` confirming it's live.
+---
+
+## Activation Runbook
+
+### Activate Oreluwa / RunPod
+```bash
+# On VPS
+echo "RUNPOD_API_KEY=<from Oreluwa>" >> /opt/mw/chat2cash/.env
+echo "RUNPOD_ENDPOINT_ID=<from Oreluwa>" >> /opt/mw/chat2cash/.env
+docker compose -f /opt/mw/docker-compose.yml up -d --force-recreate chat2cash
+
+# Confirm
+curl https://chat2cash.mindwaveja.com/api/config
+# → "aiProvider": "oreluwa"
+```
+
+### Activate WiPay
+```bash
+# Edit on VPS
+nano /opt/mw/chat2cash/.env
+# Set: WIPAY_MERCHANT_KEY=<your key>
+# Set: WIPAY_ACCOUNT_NUMBER=<your account>
+docker compose -f /opt/mw/docker-compose.yml up -d --force-recreate chat2cash
+```
+
+### Standard Redeploy
+```bash
+cd /opt/mw/chat2cash && git pull origin main
+cd /opt/mw && docker compose build --no-cache chat2cash && docker compose up -d chat2cash
+```
+
+---
+
+## API Health
+```
+GET /api/health   → { status, uptime, timestamp }
+GET /api/stats    → { totalChats, totalMessages, totalPaidJMD }
+GET /api/config   → { aiConfigured, aiProvider, wipayConfigured, ... }
+```
+
+---
+
+*MindWave JA · chat2cash.mindwaveja.com · 2026-06-23*
