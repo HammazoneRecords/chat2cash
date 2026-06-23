@@ -16,5 +16,5 @@ assets/.aistudio/
 *.db.bak-*
 *.db-bak-*
 
-# pnpm lockfile — project uses npm
-pnpm-lock.yaml
+# npm lockfile no longer used — project canonical lockfile is pnpm-lock.yaml
+package-lock.json

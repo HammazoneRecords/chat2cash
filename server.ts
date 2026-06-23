@@ -12,14 +12,81 @@ dotenv.config();
 const app = express();
 const PORT = parseInt(process.env.PORT || "4001");
 
-// Shared user secret keys or fallback values
+// Shared secret keys
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
+const RUNPOD_ENDPOINT_ID = process.env.RUNPOD_ENDPOINT_ID; // Oreluwa endpoint
 const WIPAY_ACCOUNT_NUMBER = process.env.WIPAY_ACCOUNT_NUMBER || "1234567";
 const WIPAY_MERCHANT_KEY = process.env.WIPAY_MERCHANT_KEY || "";
 const WIPAY_COUNTRY_CODE = process.env.WIPAY_COUNTRY_CODE || "JM";
 
-if (!DEEPSEEK_API_KEY) {
-  console.warn("WARNING: DEEPSEEK_API_KEY not set. AI evaluation will fall back to local heuristics.");
+const AI_PROVIDER = RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID
+  ? "oreluwa"
+  : DEEPSEEK_API_KEY
+    ? "deepseek"
+    : "local";
+
+console.log(`[AI] Evaluation provider: ${AI_PROVIDER.toUpperCase()}`);
+
+// Cascading AI evaluator: Oreluwa (RunPod) → DeepSeek → local heuristics
+async function runAIEvaluation(prompt: string): Promise<any | null> {
+  // Tier 1 — Oreluwa on RunPod (self-hosted, cost-efficient at scale)
+  if (RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID) {
+    try {
+      const res = await fetch(
+        `https://api.runpod.ai/v2/${RUNPOD_ENDPOINT_ID}/runsync`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${RUNPOD_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            input: {
+              messages: [{ role: "user", content: prompt }],
+              max_tokens: 2000,
+              response_format: { type: "json_object" },
+            },
+          }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json() as any;
+        const raw = data.output?.choices?.[0]?.message?.content || data.output;
+        return JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+      }
+    } catch (e) {
+      console.warn("[AI] Oreluwa/RunPod failed, falling back to DeepSeek:", e);
+    }
+  }
+
+  // Tier 2 — DeepSeek direct API
+  if (DEEPSEEK_API_KEY) {
+    try {
+      const res = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+          max_tokens: 2000,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        return JSON.parse(data.choices[0].message.content);
+      }
+    } catch (e) {
+      console.warn("[AI] DeepSeek failed, using local heuristics:", e);
+    }
+  }
+
+  // Tier 3 — local heuristics (handled by caller returning null)
+  return null;
 }
 
 // SQLite database (chat2cash.db) initialized in db.ts with schema and WAL mode
@@ -105,7 +172,8 @@ app.get("/api/config", (req, res) => {
   res.json({
     status: "ok",
     wipayConfigured: !!process.env.WIPAY_MERCHANT_KEY,
-    aiConfigured: !!DEEPSEEK_API_KEY,
+    aiConfigured: AI_PROVIDER !== "local",
+    aiProvider: AI_PROVIDER,
     wipayMerchantAccount: WIPAY_ACCOUNT_NUMBER || "Demo Gateway",
     wipayCountryCode: WIPAY_COUNTRY_CODE,
   });
@@ -484,7 +552,7 @@ app.post("/api/process-chat", requireSession, async (req, res) => {
     let aiscoredIndicators: Record<number, { isUseful: boolean; score: number; category: string; explanation: string }> = {};
     const localOptimizedCount = Object.keys(localEvaluations).length;
     
-    if (DEEPSEEK_API_KEY && ambiguousIndices.length > 0) {
+    if (ambiguousIndices.length > 0 && AI_PROVIDER !== "local") {
       try {
         const samplingCount = Math.min(ambiguousIndices.length, 15);
         const ambiguousSample = ambiguousIndices.slice(0, samplingCount).map((idx) => ({
@@ -508,25 +576,12 @@ ${JSON.stringify(ambiguousSample, null, 2)}
 Respond strictly in valid JSON:
 {"suitabilityScore": number, "evaluationSummary": "string", "scoredIndices": [{"idx": number, "isUseful": boolean, "score": number, "category": "string", "explanation": "string"}]}`;
 
-        const aiResponse = await fetch("https://api.deepseek.com/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [{ role: "user", content: aiPrompt }],
-            response_format: { type: "json_object" },
-            max_tokens: 2000,
-          }),
-        });
+        const result = await runAIEvaluation(aiPrompt);
 
-        if (aiResponse.ok) {
-          const aiData = await aiResponse.json() as any;
-          const result = JSON.parse(aiData.choices[0].message.content);
+        if (result) {
           suitabilityScore = result.suitabilityScore ?? 75;
-          evaluationSummary = `Hybrid engine active: pre-filtered ${localOptimizedCount} turns locally, audited ${ambiguousSample.length} ambiguous items via DeepSeek.`;
+          const providerLabel = AI_PROVIDER === "oreluwa" ? "Oreluwa (RunPod)" : "DeepSeek";
+          evaluationSummary = `Hybrid engine active: pre-filtered ${localOptimizedCount} turns locally, audited ${ambiguousSample.length} ambiguous items via ${providerLabel}.`;
 
           if (Array.isArray(result.scoredIndices)) {
             result.scoredIndices.forEach((item: any) => {
@@ -540,7 +595,7 @@ Respond strictly in valid JSON:
           }
         }
       } catch (aiError) {
-        console.error("DeepSeek evaluation failed, using static fallback", aiError);
+        console.error("AI evaluation failed, using static fallback", aiError);
         evaluationSummary = `Hybrid static fail-safe: optimized ${localOptimizedCount} dialogue turns locally. Fallback heuristics applied.`;
       }
     } else {
