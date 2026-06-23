@@ -8,3 +8,10 @@ coverage/
 !.env.example
 db.json
 assets/.aistudio/
+
+# SQLite database files — never commit, data lives on server
+*.db
+*.db-shm
+*.db-wal
+*.db.bak-*
+*.db-bak-*
