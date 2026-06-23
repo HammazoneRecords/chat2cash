@@ -83,6 +83,19 @@ export class ChatDB {
       )
     `);
 
+    // Voice notes waitlist
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS voice_waitlist (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        town TEXT DEFAULT '',
+        country TEXT DEFAULT 'JM',
+        age TEXT DEFAULT '',
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log("[DB] Schema initialized");
   }
 
@@ -226,6 +239,22 @@ export class ChatDB {
       ...row,
       wipayResponse: JSON.parse(row.wipayResponse)
     }));
+  }
+
+  // Voice waitlist operations
+  addToWaitlist(entry: { name: string; email: string; town: string; country: string; age: string }) {
+    const stmt = this.db.prepare(`
+      INSERT INTO voice_waitlist (name, email, town, country, age)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    stmt.run(entry.name, entry.email, entry.town || "", entry.country || "JM", entry.age || "");
+  }
+
+  getStats() {
+    const totalChats = (this.db.prepare("SELECT COUNT(*) as count FROM datasets").get() as any).count;
+    const totalMessages = (this.db.prepare("SELECT SUM(CAST(json_extract(metadata, '$.totalLinesAnalyzed') AS INTEGER)) as total FROM datasets").get() as any).total || 0;
+    const jmdPaid = (this.db.prepare("SELECT SUM(amount) as total FROM transactions WHERE currency = 'JMD'").get() as any).total || 0;
+    return { totalChats, totalMessages, totalPaidJMD: Math.round(jmdPaid) };
   }
 
   close() {

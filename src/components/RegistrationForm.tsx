@@ -269,10 +269,10 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
       <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
       
       <div className="space-y-2 text-center sm:text-left">
-        <span className="text-[10px] uppercase font-bold text-emerald-400 font-mono tracking-widest block">COMPLIANCE LEDGER KEYS</span>
-        <h2 className="text-2xl font-bold font-display text-white tracking-tight">Create Secured Seller Profile</h2>
+        <span className="text-[10px] uppercase font-bold text-emerald-400 font-mono tracking-widest block">WHO ARE YOU?</span>
+        <h2 className="text-2xl font-bold font-display text-white tracking-tight">Create Your Seller Profile</h2>
         <p className="text-xs text-slate-400 leading-relaxed">
-          Link your billing address, mobile phone and email to automatically map processed dialogues to persistent <strong>UserId</strong> records.
+          We need to make sure you're a real person. One account per person — yes, we know some of you will try to make two. Don't. Every submission is tied back to your name, phone, and email, and we check.
         </p>
       </div>
 
@@ -745,13 +745,13 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
           disabled={loading}
           className="w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-sm font-bold shadow-lg shadow-emerald-950/50 disabled:opacity-40 transition-all outline-none cursor-pointer"
         >
-          {loading ? "SAVING SECURE BIO-KEYS..." : "SAVING PROFILE & RUNNING LEDGER"}
+          {loading ? "Creating your account..." : "CREATE MY ACCOUNT"}
         </button>
 
         <div className="pt-3 border-t border-slate-800 flex items-start gap-2.5 text-slate-500 text-[11px] leading-relaxed">
           <Lock className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
           <span>
-            Strict anti-fraud escrow lock: Clearing proceeds take <strong>7-14 business days</strong> for model validity assurance. Saved data is strictly mapped.
+            Payouts take <strong>7-14 business days</strong> — this is to verify submissions are genuine and not synthetic. Your data is never shared or sold beyond the stated purpose.
           </span>
         </div>
 

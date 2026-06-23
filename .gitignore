@@ -15,3 +15,6 @@ assets/.aistudio/
 *.db-wal
 *.db.bak-*
 *.db-bak-*
+
+# pnpm lockfile — project uses npm
+pnpm-lock.yaml

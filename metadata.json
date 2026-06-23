@@ -1,6 +1,5 @@
 {
   "name": "Chat2Cash",
   "description": "Anonymize WhatsApp chat files into high-quality AI training datasets, estimate training value, and securely initiate disbursements via WiPay with Chat2Cash.",
-  "requestFramePermissions": ["camera"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": ["camera"]
 }

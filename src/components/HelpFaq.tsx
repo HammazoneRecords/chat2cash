@@ -32,7 +32,7 @@ export default function HelpFaq() {
     {
       id: "pay-1",
       question: "How exactly are my dialogue turns priced and calculated?",
-      answer: "Your earnings are determined by two primary metrics: (1) Useful Dialog Turns: each completed Q&A dialog sequence parsed from your chat text is evaluated by our custom Gemini model and marked as useful or useless. Standard useful turns earn $0.50 to $1.00 JMD depending on the resulting AI suitability score. (2) Opt-in Multiplier: Activating optional demographics (education level, school, housing layout) instantly applies an autoconfigured 2x multiplier across every single accepted dialogue turn in your file.",
+      answer: "Your earnings are determined by two primary metrics: (1) Useful Dialog Turns: each completed Q&A dialog sequence parsed from your chat text is evaluated by our custom AI evaluation model and marked as useful or useless. Standard useful turns earn $0.50 to $1.00 JMD depending on the resulting AI suitability score. (2) Opt-in Multiplier: Activating optional demographics (education level, school, housing layout) instantly applies an autoconfigured 2x multiplier across every single accepted dialogue turn in your file.",
       category: "payout",
       icon: DollarSign,
     },
@@ -84,7 +84,7 @@ export default function HelpFaq() {
           </div>
           <h2 className="text-2xl font-display font-semibold text-white tracking-tight">Help &amp; Frequently Asked Questions</h2>
           <p className="text-slate-400 text-xs max-w-xl">
-            Read transparent protocols regarding JMD settlements, security compliance, local browser parsing, and Gemini AI auditing metrics.
+            Read transparent protocols regarding JMD settlements, security compliance, local browser parsing, and AI auditing metrics.
           </p>
         </div>
 

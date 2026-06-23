@@ -13,7 +13,7 @@ The solution ensures rigorous privacy standards by executing all sanitization an
 *   **Geographic Settlement Targeting**: Collects exact settlement location demographics with options for designated **Settlement Country** and a separate, dedicated **Town/City** submission field.
 *   **Dual-Tier Demographic Multiplier**: Registers sellers with age, gender/identification (Male, Female, Intersex (formerly referred to locally as Hermaphrodite)), education levels, and household details, unleashing a **2x award payout multiplier** for opt-in demographic profiles.
 *   **Interactive Help & FAQ Hub**: A responsive, categorized troubleshooting panel embedded in the home footer explaining processing timelines, pricing structures, and privacy practices.
-*   **Gemini Evaluation Intelligence**: Employs Google's Gemini models server-side to assess training utility, scoring instructional density while discarding redundant chit-chat, automated system messages, and untranslatable/generic dialect.
+*   **DeepSeek Evaluation Intelligence**: Employs DeepSeek's `deepseek-chat` model server-side to assess training utility, scoring instructional density while discarding redundant chit-chat, automated system messages, and untranslatable/generic dialect.
 *   **WiPay Caribbean Hub**: Logs validated proceeds straight onto a public reconciliation ledger with secure tracking IDs destined for user WiPay merchant pockets.
 
 ---
@@ -22,7 +22,7 @@ The solution ensures rigorous privacy standards by executing all sanitization an
 
 *   **Frontend**: React + TypeScript + Tailwind CSS + Lucide Icons + Motion (for route & tab animations)
 *   **Backend**: Node.js + Express.js + TSX (direct execution)
-*   **AI Engine**: `@google/genai` TypeScript SDK (server-side proxying)
+*   **AI Engine**: `deepseek-chat` API (server-side, via native `fetch`)
 *   **Build Tool**: Vite (bundling frontend) & Esbuild (bundling backend)
 
 ---
@@ -31,10 +31,10 @@ The solution ensures rigorous privacy standards by executing all sanitization an
 
 ### 1. Environment Configuration
 
-Create a `.env` file in the root directory based on the `.env.example` blueprint. Add your Google Gemini API key:
+Create a `.env` file in the root directory based on the `.env.example` blueprint. Add your DeepSeek API key:
 
 ```env
-GEMINI_API_KEY=your_actual_gemini_api_key_goes_here
+DEEPSEEK_API_KEY=your_actual_deepseek_api_key_goes_here
 ```
 
 ### 2. Development Setup
@@ -49,7 +49,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:4001](http://localhost:4001) in your browser.
 
 ### 3. Production Compilation
 

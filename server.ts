@@ -206,6 +206,32 @@ app.get("/api/reconciliation", (req, res) => {
   });
 });
 
+// Public stats — total chats, messages, JMD paid out
+app.get("/api/stats", (req, res) => {
+  try {
+    res.json(database.getStats());
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Voice notes waitlist signup
+app.post("/api/waitlist", (req, res) => {
+  const { name, email, town, country, age } = req.body;
+  if (!name?.trim() || !email?.trim()) {
+    return res.status(400).json({ error: "Name and email are required." });
+  }
+  try {
+    database.addToWaitlist({ name: name.trim(), email: email.trim(), town: town || "", country: country || "JM", age: String(age || "") });
+    res.json({ success: true, message: "You're on the list. First to know when voice notes launch." });
+  } catch (err: any) {
+    if (err.message?.includes("UNIQUE constraint")) {
+      return res.status(409).json({ error: "This email is already on the waitlist." });
+    }
+    res.status(500).json({ error: err.message || "Failed to join waitlist." });
+  }
+});
+
 // Helper: Securely strip timestamps, contact numbers, and person names locally
 function sanitizeWhatsAppChatLocal(chatText: string) {
   const lines = chatText.split(/\r?\n/);
@@ -564,17 +590,11 @@ Respond strictly in valid JSON:
       }
     });
     
-    // Base Rates for Payout in custom currency
-    // Quality scaling: Higher suitability means higher rate per useful dialogue turn
-    let baseRatePerUsefulPair = 0.50; // $0.50 per useful dialog pair
-    
-    // Apply 2x multiplier for providing detailed demographic data
-    if (profile.demographicOptIn) {
-      baseRatePerUsefulPair = baseRatePerUsefulPair * 2;
-    }
-
-    const suitabilityMultiplier = suitabilityScore / 100;
-    const ratePerPair = Number((baseRatePerUsefulPair * suitabilityMultiplier).toFixed(2));
+    // JMD payout: $0.50–$4.00 JMD per useful dialogue pair, quality-scaled
+    // suitabilityScore 0–100 maps linearly to $0.50–$4.00 JMD
+    const qualityRate = 0.50 + (suitabilityScore / 100) * 3.50;
+    // 2x demographic multiplier pushes range to $1.00–$8.00 JMD
+    const ratePerPair = Number(((profile as any).demographicOptIn ? qualityRate * 2 : qualityRate).toFixed(2));
     
     const payoutAmount = Number((totalUsefulLines * ratePerPair).toFixed(2));
     const currency = profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD";

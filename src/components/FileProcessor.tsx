@@ -109,7 +109,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
         throw new Error("The WhatsApp export file is empty or corrupted.");
       }
 
-      setStatusMessage("Running local speaker masking & initiating Gemini AI quality eval...");
+      setStatusMessage("Running local speaker masking & initiating AI quality evaluation...");
       
       const response = await fetch("/api/process-chat", {
         method: "POST",
@@ -447,7 +447,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                     <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
                     Fine-Tuning Utility Assessment
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">Linguistic parsing &amp; dialogue density ratings from Gemini API</p>
+                  <p className="text-xs text-slate-400 mt-1">Linguistic parsing &amp; dialogue density ratings from AI evaluation engine</p>
                 </div>
                 <div className="text-right">
                   <div className="text-4xl font-display font-extrabold text-emerald-400">{activeDataset.metadata.suitabilityScore}</div>
@@ -475,7 +475,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
               </div>
 
               <div className="p-4 rounded-xl bg-[#050810] border border-slate-800/80 text-xs">
-                <span className="font-bold text-slate-300 block mb-1 font-mono text-[10px] uppercase tracking-wide">GEMINI AI RECONCILIATION SUMMARY:</span>
+                <span className="font-bold text-slate-300 block mb-1 font-mono text-[10px] uppercase tracking-wide">AI EVALUATION RECONCILIATION SUMMARY:</span>
                 <p className="text-slate-400 leading-relaxed italic">
                   &ldquo;{activeDataset.metadata.evaluationSummary}&rdquo;
                 </p>
