@@ -127,8 +127,11 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
         >
           <div className="px-6 py-3 bg-[#070b14] border border-slate-800 rounded-2xl text-center min-w-[160px]">
             <div className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-widest mb-1">💬 Text Chats</div>
-            <div className="text-lg font-bold text-white">$0.50 – $4 JMD</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">per useful dialogue turn</div>
+            <div className="flex items-center gap-2">
+              <div className="text-lg font-bold text-white">$0.50 – $4 JMD</div>
+              <span className="text-[9px] font-black text-emerald-300 bg-emerald-900/50 border border-emerald-700/50 px-1.5 py-0.5 rounded-full tracking-widest">×2</span>
+            </div>
+            <div className="text-[10px] text-slate-500 mt-0.5">per turn · up to $8 JMD with demographic bonus</div>
           </div>
           <div className="text-slate-700 text-xl hidden sm:block font-light">→</div>
           <div className="px-6 py-3 bg-emerald-950/30 border border-emerald-700/40 rounded-2xl text-center min-w-[160px] relative">
@@ -261,7 +264,10 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 pt-2">
               <div className="text-center">
-                <div className="text-2xl font-bold font-mono text-emerald-400">$0.50 – $4 JMD</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-bold font-mono text-emerald-400">$0.50 – $8 JMD</div>
+                  <span className="text-[9px] font-black text-emerald-300 bg-emerald-900/50 border border-emerald-700/50 px-1.5 py-0.5 rounded-full tracking-widest self-center">×2</span>
+                </div>
                 <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Per Useful Turn</div>
               </div>
               <div className="hidden sm:block text-slate-700 text-2xl font-light">×</div>
@@ -332,7 +338,10 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               <div className="bg-[#050810] rounded-2xl border border-emerald-900/30 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-900/20 bg-emerald-950/20">
                   <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wide">Rich Exchange</span>
-                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-900/40 px-2 py-0.5 rounded-full">~$157 JMD</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-900/40 px-2 py-0.5 rounded-full">$8 JMD</span>
+                    <span className="text-[9px] font-black text-emerald-300 bg-emerald-900/50 border border-emerald-700/50 px-1.5 py-0.5 rounded-full tracking-widest">×2</span>
+                  </div>
                 </div>
                 <div className="p-4 space-y-2.5">
                   <div className="flex gap-2">
@@ -343,8 +352,9 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                     <span className="text-[9px] font-bold font-mono text-emerald-600 bg-emerald-950/40 border border-emerald-900/30 px-1.5 py-0.5 rounded shrink-0 mt-0.5">REPLY</span>
                     <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"Incorporate it fuss. It a go set the tone and mek yuh look serious from day one yuh zimmie. Plus yuh cyaan a open a proppa business account without it. Unless dem change dat but eida way incorporate it"</p>
                   </div>
-                  <div className="pt-1 border-t border-emerald-900/20">
-                    <span className="text-[9px] text-emerald-700 font-mono">High density — real question, actionable advice, Patois-authentic</span>
+                  <div className="pt-1 border-t border-emerald-900/20 space-y-0.5">
+                    <span className="text-[9px] text-emerald-700 font-mono block">High density — real question, actionable advice, Patois-authentic</span>
+                    <span className="text-[9px] text-emerald-600/70 font-mono block">2× demographic multiplier applied · base rate $4 JMD × 2 = $8 JMD this turn</span>
                   </div>
                 </div>
               </div>
