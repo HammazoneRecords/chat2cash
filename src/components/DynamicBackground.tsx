@@ -30,6 +30,9 @@ const JA_WORDS = [
   "everything irie","a so it go","weh yuh deh","come een","respect due",
   "real talk","link mi","jah know","night jue","nuh true","wah dat",
   "wheel and come again","nuh sah","nah go lie","mi deh yah",
+  // 2026-06-24
+  "throw mi pawda and come bk","kool nuh mi dawg","weh di rass","bumbuhclaat",
+  "gweh","psst","guango","spur tree","guzu",
 ];
 const WORDS = [...new Set(JA_WORDS)].sort(() => Math.random() - 0.5);
 
