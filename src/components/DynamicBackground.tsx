@@ -1,8 +1,6 @@
 import React, { useEffect, useRef } from "react";
 
-// ~200 Jamaican words, phrases, places, food, culture
 const JA_WORDS = [
-  // Patois dictionary
   "Anansi","Duppy","Nyam","Brawta","Su-su","unu","Hush","Stush","Dukunu","dwl",
   "yaad","brejin","parry","par","sumn","gwan","bawl","affi","ting","cyah","cah",
   "nuff","seh","yuh","wi","mek","suh","sah","deh","nuh","di","fi","pon","wid",
@@ -10,63 +8,37 @@ const JA_WORDS = [
   "pickney","aryte","yute","gyal","har","enuh","haad","fuckry","tiad","ketch",
   "bredda","Babylon","ago","cyaan","deevn","haffi","lakka","nah","ovastand","pree",
   "nuttn","zimmie","mussi","wicked","beat","rass","dawg","unuh","bwoy","everyting",
-  "mawga","hitchings","nuh sah","farrin","belly",
-  // Food
-  "jerk","ackee","saltfish","breadfruit","bammy","festival","escovitch",
-  "mannish water","stew peas","run dung","callaloo","patty","cocobread",
-  "guinep","naseberry","soursop","jackfruit","bun and cheese","roast fish",
-  "curry goat","oxtail","brown stew","rice and peas","ital stew","dumpling",
-  "hard dough","hardo","blue draws","stamp and go","pepper pot",
-  // Drinks
-  "carrot juice","June plum juice","soursop juice","sky juice","water coconut",
-  "Magnum","rum punch","Red Label","Wray and Nephew","ginger beer","mauby",
-  // Places
+  "mawga","hitchings","nuh sah","farrin","belly","jerk","ackee","saltfish",
+  "breadfruit","bammy","festival","escovitch","mannish water","stew peas",
+  "callaloo","patty","cocobread","guinep","naseberry","soursop","bun and cheese",
+  "roast fish","curry goat","oxtail","rice and peas","dumpling","hardo",
+  "stamp and go","carrot juice","sky juice","water coconut","Magnum","ginger beer",
   "Kingston","Portmore","Spanish Town","Montego Bay","Negril","Ocho Rios",
-  "Mandeville","Trench Town","Maxfield","Half Way Tree","New Kingston","Papine",
-  "Liguanea","Grants Pen","St. Andrew","St. Catherine","Westmoreland","Trelawny",
-  "Portland","St. Mary","St. Thomas","St. Ann","St. James","Clarendon",
-  "Manchester","St. Elizabeth","Hanover","Bull Bay","August Town","Duhaney Park",
-  "Riverton","Arnett Gardens","Rema","Tivoli","Jungle","Standpipe",
-  // Music / Culture
+  "Mandeville","Trench Town","Half Way Tree","New Kingston","Papine","Liguanea",
+  "St. Andrew","St. Catherine","Westmoreland","Portland","St. Mary","St. Thomas",
+  "St. Ann","St. James","Clarendon","Manchester","St. Elizabeth","Hanover",
+  "August Town","Riverton","Arnett Gardens","Tivoli","Standpipe","Bull Bay",
   "riddim","dancehall","reggae","ska","rocksteady","bashment","sound system",
   "selector","deejay","singjay","juggling","dub","version","clash","pull up",
   "nine night","nyahbinghi","groundation","reasoning","livity","I-tal",
   "InI","Zion","lion","empress","bredren","sistren","idren","natty",
   "lock dread","bald head","sufferation","pressure","one love","irie","seen",
   "respect","forward","blessed","natural mystic","positive vibration",
-  // Transport / Daily life
-  "JUTC","route taxi","robot","coaster","one drop","taxi stand","fare",
-  "market","higglers","street food","vendor","cambio","partner plan",
-  "box hand","throw partner","dead yard","wake","jubilee","coronation market",
-  // Currency / Economy
-  "J dollar","WiPay","lynk","NCB","Scotia","pan chicken","pushcart",
-  "informal","hustling","vibes","works","contracts","agency",
-  // Common phrases
+  "JUTC","route taxi","robot","coaster","one drop","cambio","partner plan",
+  "box hand","throw partner","dead yard","jubilee","J dollar","WiPay",
   "wah gwaan","nuh badda","big up","likkle more","walk good","easy nuh",
-  "everything irie","a so it go","a who dat","weh yuh deh","come een",
-  "respect due","inna di morrows","real talk","link mi","check mi later",
-  "jah know","night jue","one drop","nuh true","wah dat","wheel and come again",
+  "everything irie","a so it go","weh yuh deh","come een","respect due",
+  "real talk","link mi","jah know","night jue","nuh true","wah dat",
+  "wheel and come again","nuh sah","nah go lie","mi deh yah",
 ];
-
-// Deduplicate and shuffle
 const WORDS = [...new Set(JA_WORDS)].sort(() => Math.random() - 0.5);
 
-type Direction = "vertical" | "horizontal";
-
-interface Stream {
-  pos: number;       // current leading position (x for vertical, y for horizontal)
-  cross: number;     // fixed cross-axis position (column x or row y)
-  speed: number;
-  words: string[];
-  wordIdx: number;
-  charPos: number;
-  trail: { word: string; alpha: number }[];
-}
+interface HStream { x: number; y: number; speed: number; word: string; alpha: number; wi: number }
+interface VStream { x: number; y: number; speed: number; trail: string[]; trailAlpha: number[] }
 
 export default function DynamicBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const dirRef = useRef<Direction>("vertical");
-  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rainAlphaRef = useRef(0); // 0=hidden, 1=full vertical rain
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -75,89 +47,105 @@ export default function DynamicBackground() {
     if (!ctx) return;
 
     let animId: number;
-    let streams: Stream[] = [];
-    const FONT_SIZE = 13;
-    const TRAIL_LEN = 10;
+    const FS = 13;
+    let hStreams: HStream[] = [];
+    let vStreams: VStream[] = [];
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+    let isScrolling = false;
 
-    const buildStreams = (dir: Direction) => {
-      const count = dir === "vertical"
-        ? Math.ceil(canvas.width / 32)
-        : Math.ceil(canvas.height / 28);
+    const resize = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      initH();
+      initV();
+    };
 
-      return Array.from({ length: count }, (_, i) => ({
-        pos: Math.random() * (dir === "vertical" ? canvas.height : canvas.width) * -1,
-        cross: i * (dir === "vertical" ? canvas.width / count : canvas.height / count)
-          + Math.random() * 12,
-        speed: 1.2 + Math.random() * 2.2,
-        words: [...WORDS].sort(() => Math.random() - 0.5),
-        wordIdx: 0,
-        charPos: 0,
-        trail: [],
+    const initH = () => {
+      const rows = Math.ceil(canvas.height / 38);
+      hStreams = Array.from({ length: rows * 4 }, (_, i) => ({
+        x: Math.random() * canvas.width,
+        y: (Math.floor(i / 4) * (canvas.height / rows)) + Math.random() * 20,
+        speed: 0.3 + Math.random() * 0.5,
+        word: WORDS[i % WORDS.length],
+        alpha: 0.08 + Math.random() * 0.18,
+        wi: Math.floor(Math.random() * WORDS.length),
       }));
     };
 
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      streams = buildStreams(dirRef.current);
+    const initV = () => {
+      const cols = Math.ceil(canvas.width / 38);
+      vStreams = Array.from({ length: cols }, (_, i) => ({
+        x: i * (canvas.width / cols) + Math.random() * 20,
+        y: Math.random() * canvas.height * -1,
+        speed: 0.8 + Math.random() * 1.4,
+        trail: Array.from({ length: 8 }, (__, j) => WORDS[(i * 3 + j) % WORDS.length]),
+        trailAlpha: Array.from({ length: 8 }, (__, j) => (j + 1) / 8),
+      }));
     };
-    resize();
-    window.addEventListener("resize", resize);
 
-    // Scroll: while scrolling → vertical; stops → horizontal
     const onScroll = () => {
-      if (dirRef.current !== "vertical") {
-        dirRef.current = "vertical";
-        streams = buildStreams("vertical");
-      }
-      if (scrollTimer.current) clearTimeout(scrollTimer.current);
-      scrollTimer.current = setTimeout(() => {
-        dirRef.current = "horizontal";
-        streams = buildStreams("horizontal");
-      }, 600);
+      if (!isScrolling) isScrolling = true;
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => { isScrolling = false; }, 500);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
 
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas.parentElement!);
+
     const draw = () => {
-      ctx.fillStyle = "rgba(6,10,19,0.18)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Fade rain alpha based on scroll state
+      const targetAlpha = isScrolling ? 1 : 0;
+      rainAlphaRef.current += (targetAlpha - rainAlphaRef.current) * 0.06;
 
-      const dir = dirRef.current;
-      const limit = dir === "vertical" ? canvas.height : canvas.width;
-      const crossLimit = dir === "vertical" ? canvas.width : canvas.height;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = `${FS}px monospace`;
 
-      streams.forEach(s => {
-        s.pos += s.speed;
-        if (s.pos - TRAIL_LEN * FONT_SIZE * 1.8 > limit) {
-          s.pos = -FONT_SIZE * 2;
-          s.cross = Math.random() * crossLimit;
-          s.trail = [];
+      // ── Horizontal always-on layer ──────────────────────────────────────
+      hStreams.forEach(s => {
+        s.x += s.speed;
+        if (s.x > canvas.width + 80) {
+          s.x = -80;
+          s.wi = (s.wi + 1) % WORDS.length;
+          s.word = WORDS[s.wi];
+          s.alpha = 0.08 + Math.random() * 0.18;
         }
+        ctx.fillStyle = `rgba(16,185,129,${s.alpha})`;
+        ctx.fillText(s.word, s.x, s.y);
+      });
 
-        const word = s.words[s.wordIdx % s.words.length];
+      // ── Vertical rain layer — fades in/out with scroll ──────────────────
+      const ra = rainAlphaRef.current;
+      if (ra > 0.01) {
+        vStreams.forEach(s => {
+          s.y += s.speed;
+          if (s.y - s.trail.length * FS * 1.8 > canvas.height) {
+            s.y = -FS * 2;
+            s.x = Math.random() * canvas.width;
+          }
 
-        // Draw trail
-        s.trail.forEach((t, i) => {
-          const alpha = (i / TRAIL_LEN) * 0.55;
-          ctx.fillStyle = i === s.trail.length - 1
-            ? `rgba(200,255,230,${alpha + 0.25})`
-            : `rgba(16,185,129,${alpha})`;
-          ctx.font = `${FONT_SIZE}px monospace`;
-          if (dir === "vertical") {
-            ctx.fillText(t.word, s.cross, s.pos - (s.trail.length - i - 1) * FONT_SIZE * 1.8);
-          } else {
-            ctx.save();
-            ctx.translate(s.pos - (s.trail.length - i - 1) * FONT_SIZE * 5, s.cross);
-            ctx.fillText(t.word, 0, 0);
-            ctx.restore();
+          s.trail.forEach((word, i) => {
+            const isLead = i === s.trail.length - 1;
+            const trailFade = (i + 1) / s.trail.length;
+            const yPos = s.y - (s.trail.length - 1 - i) * FS * 1.8;
+            if (yPos < 0 || yPos > canvas.height) return;
+
+            if (isLead) {
+              ctx.fillStyle = `rgba(220,255,235,${ra * 0.9})`;
+            } else {
+              ctx.fillStyle = `rgba(16,185,129,${ra * trailFade * 0.6})`;
+            }
+            ctx.fillText(word, s.x, yPos);
+          });
+
+          // Cycle trail words slowly
+          if (Math.random() < 0.015) {
+            s.trail.shift();
+            s.trail.push(WORDS[Math.floor(Math.random() * WORDS.length)]);
           }
         });
-
-        // Push current word to trail
-        s.trail.push({ word, alpha: 1 });
-        if (s.trail.length > TRAIL_LEN) s.trail.shift();
-        s.wordIdx++;
-      });
+      }
 
       animId = requestAnimationFrame(draw);
     };
@@ -166,9 +154,9 @@ export default function DynamicBackground() {
 
     return () => {
       cancelAnimationFrame(animId);
-      window.removeEventListener("resize", resize);
       window.removeEventListener("scroll", onScroll);
-      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+      ro.disconnect();
+      if (scrollTimer) clearTimeout(scrollTimer);
     };
   }, []);
 
@@ -176,13 +164,13 @@ export default function DynamicBackground() {
     <canvas
       ref={canvasRef}
       style={{
-        position: "fixed",
+        position: "absolute",
         inset: 0,
         width: "100%",
         height: "100%",
         pointerEvents: "none",
         zIndex: 0,
-        opacity: 0.85,
+        borderRadius: "inherit",
       }}
     />
   );

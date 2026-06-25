@@ -80,7 +80,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#060a13] text-[#cbd5e1] flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-200" id="main-application-frame">
-      <DynamicBackground />
+
       
       {/* Top Navigation Bar with modern glassmorphism */}
       <nav className="sticky top-0 z-40 relative bg-[#080d1a]/90 backdrop-blur-md border-b border-[#1e293b] px-4 py-4" id="navigation-bar">
@@ -178,7 +178,7 @@ export default function App() {
       </nav>
 
       {/* Main Body */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-10 relative z-10" id="application-body-container">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-10" id="application-body-container">
         {activeTab === 'home' && (
           <LandingHero 
             onStart={() => {

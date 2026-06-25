@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Shield, Sparkles, DollarSign, ArrowRight, HelpCircle, CheckCircle2, Mic, Bell, Mail, X, MapPin, Play } from "lucide-react";
+import DynamicBackground from "./DynamicBackground";
 import { motion, AnimatePresence } from "motion/react";
 import HelpFaq from "./HelpFaq";
 
@@ -81,14 +82,15 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
     <div id="landing-hero" className="py-8 px-2 max-w-5xl mx-auto space-y-16">
 
       {/* ── HERO ── */}
-      <div className="text-center space-y-6 relative py-4">
+      <div className="text-center space-y-6 relative py-4" style={{ overflow: "hidden" }}>
+        <DynamicBackground />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-72 bg-[#022c22] rounded-full blur-3xl opacity-30 -z-10 pointer-events-none" />
 
         <motion.div
           initial={{ opacity: 0, y: -15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/65 text-emerald-300 text-xs font-mono font-bold tracking-wider border border-emerald-900/50"
+          className="relative z-10 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/65 text-emerald-300 text-xs font-mono font-bold tracking-wider border border-emerald-900/50"
         >
           <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
           CHAT2CASH SECURE DATA HUB
@@ -98,7 +100,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.7 }}
-          className="text-4xl sm:text-6xl font-display font-extrabold text-white tracking-tight leading-tight max-w-4xl mx-auto"
+          className="relative z-10 text-4xl sm:text-6xl font-display font-extrabold text-white tracking-tight leading-tight max-w-4xl mx-auto"
         >
           Anonymize WhatsApp Chats. <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500">
