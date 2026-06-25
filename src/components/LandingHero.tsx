@@ -285,23 +285,45 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
             <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest text-center">Real Exchange Examples</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-              {/* Short = low payout */}
+              {/* Short = low payout — multi-turn */}
               <div className="bg-[#050810] rounded-2xl border border-slate-800 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-900/60">
                   <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wide">Short Exchange</span>
-                  <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-900/30 px-2 py-0.5 rounded-full">~$0.60 JMD</span>
+                  <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-900/30 px-2 py-0.5 rounded-full">Total ~$1.40 JMD</span>
                 </div>
-                <div className="p-4 space-y-2.5">
-                  <div className="flex gap-2">
-                    <span className="text-[9px] font-bold font-mono text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded shrink-0 mt-0.5">PROMPT</span>
-                    <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"yooo weh gwan? yuh nah link up lukkl more???"</p>
+                <div className="p-4 space-y-3">
+                  {/* Turn 1 */}
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2">
+                      <span className="text-[9px] font-bold font-mono text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded shrink-0 mt-0.5">PROMPT</span>
+                      <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"yooo weh gwan? yuh nah link up lukkl more???"</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-[9px] font-bold font-mono text-emerald-600 bg-emerald-950/40 border border-emerald-900/30 px-1.5 py-0.5 rounded shrink-0 mt-0.5">REPLY</span>
+                      <div className="flex-1 flex items-start justify-between gap-2">
+                        <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"god alone know."</p>
+                        <span className="text-[9px] font-mono font-bold text-amber-500 shrink-0">$0.60</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <span className="text-[9px] font-bold font-mono text-emerald-600 bg-emerald-950/40 border border-emerald-900/30 px-1.5 py-0.5 rounded shrink-0 mt-0.5">REPLY</span>
-                    <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"god alone know."</p>
+                  {/* Divider */}
+                  <div className="border-t border-slate-800/50" />
+                  {/* Turn 2 */}
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2">
+                      <span className="text-[9px] font-bold font-mono text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded shrink-0 mt-0.5">PROMPT</span>
+                      <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"yuh neva seh yuh nah miss da one yah? yuh nuh serious!"</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-[9px] font-bold font-mono text-emerald-600 bg-emerald-950/40 border border-emerald-900/30 px-1.5 py-0.5 rounded shrink-0 mt-0.5">REPLY</span>
+                      <div className="flex-1 flex items-start justify-between gap-2">
+                        <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"Nuh seh suuh mayyneeee, a just how di ting come dung"</p>
+                        <span className="text-[9px] font-mono font-bold text-amber-500 shrink-0">$0.80</span>
+                      </div>
+                    </div>
                   </div>
                   <div className="pt-1 border-t border-slate-800/60">
-                    <span className="text-[9px] text-slate-600 font-mono">Low density — short, no actionable info · still earns</span>
+                    <span className="text-[9px] text-slate-600 font-mono">Low density — casual Patois, short turns · still earns per turn</span>
                   </div>
                 </div>
               </div>
