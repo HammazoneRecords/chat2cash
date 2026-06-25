@@ -1017,6 +1017,15 @@ app.post("/api/admin/clear-strikes", requireAdmin, async (req: any, res) => {
   res.json({ success: true });
 });
 
+// ── Admin: Manually add a strike to an account ────────────────────────────
+app.post("/api/admin/add-strike", requireAdmin, async (req: any, res) => {
+  const { userId, reason } = req.body;
+  if (!userId) return res.status(400).json({ error: "Missing userId." });
+  const { strikes, flagged } = database.addStrike(userId);
+  database.addAuditLog("strike_added_by_admin", req.session?.user?.id || null, userId, reason || `Manual strike — ${strikes}/4${flagged ? " — ACCOUNT FLAGGED" : ""}`);
+  res.json({ success: true, strikes, accountFlagged: flagged });
+});
+
 // Serve frontend build static files in production
 if (process.env.NODE_ENV === "production") {
   const distPath = path.join(process.cwd(), "dist");

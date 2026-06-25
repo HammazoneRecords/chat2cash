@@ -123,12 +123,27 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
 
       const result = await response.json();
       if (!response.ok) {
+        if (result.error === "account_flagged") {
+          throw new Error("Your account has been flagged for suspicious activity. Contact support to appeal.");
+        }
+        if (result.error === "duplicate") {
+          const strikeMsg = result.accountFlagged
+            ? " Your account is now locked."
+            : result.strikes ? ` Strike ${result.strikes}/4.` : "";
+          throw new Error((result.message || "Duplicate submission detected.") + strikeMsg);
+        }
         throw new Error(result.error || "Anonymization server error");
+      }
+
+      // Partial duplicate — show warning but still proceed
+      if (result.warning === "partial_duplicate") {
+        setStatusMessage(result.message || "Partial duplicate detected — payout adjusted to new content only.");
+      } else {
+        setStatusMessage("");
       }
 
       setActiveDataset(result.dataset);
       onDatasetCreated(result.dataset);
-      setStatusMessage("");
     } catch (err: any) {
       setError(err?.message || "Failed to process chat dataset. Verify formatting.");
     } finally {

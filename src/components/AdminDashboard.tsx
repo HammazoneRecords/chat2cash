@@ -94,6 +94,16 @@ export default function AdminDashboard() {
     load();
   };
 
+  const addStrike = async (userId: string, reason: string) => {
+    await fetch("/api/admin/add-strike", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, reason }),
+      credentials: "include",
+    });
+    load();
+  };
+
   const clearFlag = async (datasetId: string) => {
     await fetch("/api/admin/flag-override", {
       method: "POST",
@@ -276,9 +286,14 @@ export default function AdminDashboard() {
                       {a.strikes}/4 strikes · flagged {a.flaggedAt?.slice(0, 10)}
                     </div>
                   </div>
-                  <button onClick={() => clearStrikes(a.userId)} style={btnStyle("#1a3a1a", "#4ade80")}>
-                    Clear Strikes
-                  </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => addStrike(a.userId, "Manual — admin")} style={btnStyle("#7c3a1e", "#fb923c")}>
+                      +Strike
+                    </button>
+                    <button onClick={() => clearStrikes(a.userId)} style={btnStyle("#1a3a1a", "#4ade80")}>
+                      Clear All
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
