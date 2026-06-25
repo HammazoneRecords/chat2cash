@@ -111,7 +111,7 @@ export default function DynamicBackground() {
           s.word = WORDS[s.wi];
           s.alpha = 0.08 + Math.random() * 0.18;
         }
-        ctx.fillStyle = `rgba(16,185,129,${s.alpha})`;
+        ctx.fillStyle = `rgba(220,255,235,${s.alpha})`;
         ctx.fillText(s.word, s.x, s.y);
       });
 
@@ -132,9 +132,9 @@ export default function DynamicBackground() {
             if (yPos < 0 || yPos > canvas.height) return;
 
             if (isLead) {
-              ctx.fillStyle = `rgba(220,255,235,${ra * 0.9})`;
+              ctx.fillStyle = `rgba(16,185,129,${ra * 1})`;   // green lead
             } else {
-              ctx.fillStyle = `rgba(16,185,129,${ra * trailFade * 0.6})`;
+              ctx.fillStyle = `rgba(220,255,235,${ra * trailFade * 0.55})`;  // white trail fading
             }
             ctx.fillText(word, s.x, yPos);
           });
