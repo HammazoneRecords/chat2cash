@@ -11,6 +11,7 @@ import FileProcessor from "./components/FileProcessor";
 import ReconciliationLedger from "./components/ReconciliationLedger";
 import AdminLogin from "./components/AdminLogin";
 import AdminDashboard from "./components/AdminDashboard";
+import DynamicBackground from "./components/DynamicBackground";
 import { UserProfile, ProcessedDataset } from "./types";
 import { authClient } from "../lib/auth-client";
 
@@ -79,19 +80,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#060a13] text-[#cbd5e1] flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-200" id="main-application-frame">
+      <DynamicBackground />
       
       {/* Top Navigation Bar with modern glassmorphism */}
-      <nav className="sticky top-0 z-40 bg-[#080d1a]/90 backdrop-blur-md border-b border-[#1e293b] px-4 py-4" id="navigation-bar">
+      <nav className="sticky top-0 z-40 relative bg-[#080d1a]/90 backdrop-blur-md border-b border-[#1e293b] px-4 py-4" id="navigation-bar">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('home')}>
-            <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-950/40">
-              <MessageSquare className="w-5 h-5 text-slate-900 stroke-[2.5]" />
-            </div>
-            <div>
-              <span className="font-display font-extrabold text-md tracking-tight block text-white">Chat2Cash</span>
-              <span className="text-[9px] text-emerald-400 font-mono font-bold uppercase tracking-widest block">AI Training Hub</span>
-            </div>
+            <img src="/chat2cashlogo.png" alt="Chat2Cash" className="w-8 h-8 rounded-lg object-contain" />
+            <span className="font-display font-extrabold text-md tracking-tight text-white">Chat2Cash</span>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 bg-[#02060d]/80 p-1 rounded-xl border border-[#1e293b]">
@@ -181,7 +178,7 @@ export default function App() {
       </nav>
 
       {/* Main Body */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-10" id="application-body-container">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-10 relative z-10" id="application-body-container">
         {activeTab === 'home' && (
           <LandingHero 
             onStart={() => {
