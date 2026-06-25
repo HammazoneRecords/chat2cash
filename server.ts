@@ -841,6 +841,21 @@ app.post("/api/admin/payout-approve", requireAdmin, (req, res) => {
   });
 });
 
+// ── User: Get receipt for their own dataset ───────────────────────────────
+app.get("/api/my-receipt/:datasetId", requireSession, (req: any, res) => {
+  const userId = req.session.user.id;
+  const { datasetId } = req.params;
+
+  const dataset = database.getDataset(datasetId);
+  if (!dataset || dataset.userId !== userId) {
+    return res.status(404).json({ error: "Not found." });
+  }
+
+  const txs = database.getTransactionsByDataset(datasetId);
+  const receipt = txs.find((t: any) => t.receiptNumber)?.receiptNumber || null;
+  return res.json({ receiptNumber: receipt, status: dataset.status });
+});
+
 // ── Admin: Picture-password verify ────────────────────────────────────────
 app.post("/api/admin/picture-verify", (req, res) => {
   const ip = (req.headers["x-forwarded-for"] as string || req.socket.remoteAddress || "unknown").split(",")[0].trim();

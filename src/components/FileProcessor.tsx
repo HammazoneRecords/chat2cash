@@ -27,8 +27,19 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
   // Fund release status state
   const [payoutLoading, setPayoutLoading] = useState(false);
   const [payoutSuccessMessage, setPayoutSuccessMessage] = useState("");
+  const [receiptNumber, setReceiptNumber] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchReceipt = async (datasetId: string) => {
+    try {
+      const res = await fetch(`/api/my-receipt/${datasetId}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.receiptNumber) setReceiptNumber(data.receiptNumber);
+      }
+    } catch {}
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -144,6 +155,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
 
       setActiveDataset(result.dataset);
       onDatasetCreated(result.dataset);
+      fetchReceipt(result.dataset.id);
     } catch (err: any) {
       setError(err?.message || "Failed to process chat dataset. Verify formatting.");
     } finally {
@@ -234,6 +246,8 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
 
       // Update local state is disbursed or pending clearance
       const updated = { ...activeDataset, status: "Approved" as const, transaction: result.transaction };
+      // Fetch receipt number if already added by admin
+      fetchReceipt(activeDataset!.id);
       setActiveDataset(updated);
       onDatasetCreated(updated);
       setPayoutSuccessMessage("Disbursement cleared securely! WiPay transactions logged with 7-14 days verification hold.");
@@ -441,6 +455,17 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                     <p className="text-[10px] text-slate-400 leading-relaxed">
                       Transaction submitted. Escrow token code: <strong className="font-mono text-emerald-300 break-all">{activeDataset.transaction?.transactionId}</strong> logged securely via clearing network layers.
                     </p>
+                    {receiptNumber ? (
+                      <div className="mt-2 p-2.5 bg-emerald-900/30 rounded-lg border border-emerald-700/30 space-y-1">
+                        <div className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">WiPay Receipt</div>
+                        <div className="font-mono font-bold text-emerald-300 text-sm break-all">{receiptNumber}</div>
+                        <div className="text-[9px] text-slate-500">Keep this for your records. This confirms payment was issued from our side.</div>
+                      </div>
+                    ) : (
+                      <div className="mt-2 p-2.5 bg-slate-900/40 rounded-lg border border-slate-800 text-[10px] text-slate-500">
+                        Receipt pending — payment usually issued within 7–14 days. Check back here once confirmed.
+                      </div>
+                    )}
                   </div>
                 )}
 
