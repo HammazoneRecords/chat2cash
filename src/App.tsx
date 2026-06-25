@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { 
-  ShieldAlert, Sparkles, LogIn, Database, LogOut, CheckCircle, 
-  HelpCircle, MessageSquare, ShieldCheck, Heart, User, ExternalLink, Calendar 
+import {
+  ShieldAlert, Sparkles, LogIn, Database, LogOut, CheckCircle,
+  HelpCircle, MessageSquare, ShieldCheck, Heart, User, ExternalLink, Calendar
 } from "lucide-react";
 import { motion } from "motion/react";
 import LandingHero from "./components/LandingHero";
@@ -9,8 +9,29 @@ import RegistrationForm from "./components/RegistrationForm";
 import LoginForm from "./components/LoginForm";
 import FileProcessor from "./components/FileProcessor";
 import ReconciliationLedger from "./components/ReconciliationLedger";
+import AdminLogin from "./components/AdminLogin";
+import AdminDashboard from "./components/AdminDashboard";
 import { UserProfile, ProcessedDataset } from "./types";
 import { authClient } from "../lib/auth-client";
+
+// Route: /admin → AdminLogin, /admin-dashboard → AdminDashboard (admin only)
+const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+if (pathname === "/admin") {
+  const container = document.getElementById("root");
+  if (container) {
+    import("react-dom/client").then(({ createRoot }) => {
+      createRoot(container).render(React.createElement(AdminLogin));
+    });
+  }
+}
+if (pathname === "/admin-dashboard") {
+  const container = document.getElementById("root");
+  if (container) {
+    import("react-dom/client").then(({ createRoot }) => {
+      createRoot(container).render(React.createElement(AdminDashboard));
+    });
+  }
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'anonymize' | 'ledger'>('home');

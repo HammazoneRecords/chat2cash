@@ -1,11 +1,13 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
 import { database } from "./db";
+import { hashContent, hashPairs } from "./lib/contentHash";
 
 dotenv.config();
 
@@ -19,6 +21,14 @@ const RUNPOD_ENDPOINT_ID = process.env.RUNPOD_ENDPOINT_ID; // Oreluwa endpoint
 const WIPAY_ACCOUNT_NUMBER = process.env.WIPAY_ACCOUNT_NUMBER || "1234567";
 const WIPAY_MERCHANT_KEY = process.env.WIPAY_MERCHANT_KEY || "";
 const WIPAY_COUNTRY_CODE = process.env.WIPAY_COUNTRY_CODE || "JM";
+
+// Admin picture-password config
+const ADMIN_CLICK_SEQUENCE: string[] = JSON.parse(process.env.ADMIN_CLICK_SEQUENCE || '["V1","V3","V2","V1","V3"]');
+const ADMIN_PASSPHRASE = process.env.ADMIN_PASSPHRASE || "";
+// Temp tokens: token → { expires: timestamp }
+const adminTempTokens = new Map<string, number>();
+// Rate limiting: IP → { count, resetAt }
+const adminAttempts = new Map<string, { count: number; resetAt: number }>();
 
 const AI_PROVIDER = RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID
   ? "oreluwa"
@@ -696,11 +706,57 @@ Respond strictly in valid JSON:
       originalLinesPreview: originalLinesPreview.slice(0, 300), // Cap preview list for rendering speed
     };
 
+    // ── Duplicate detection ──────────────────────────────────────────────────
+    const dialoguePairs = dialogues.map((d: any) => ({ speaker: d.speaker || "", text: d.text || d.response || "" }));
+    const contentHash = hashContent(dialoguePairs);
+    const pairHashes = hashPairs(dialoguePairs);
+
+    // Full content duplicate
+    if (database.contentHashExists(contentHash)) {
+      return res.status(409).json({ error: "duplicate", message: "This chat export has already been submitted. Please submit a different conversation." });
+    }
+
+    // Per-pair cross-user duplicate check
+    const existingHashes = database.getExistingPairHashes(pairHashes);
+    let dupStatus = "clean";
+    let filteredDialogues = dialogues;
+    let filteredPairHashes = pairHashes;
+
+    if (existingHashes.length === pairHashes.length && pairHashes.length > 0) {
+      // All pairs are duplicates
+      return res.status(409).json({ error: "duplicate", message: "This chat export has already been submitted. Please submit a different conversation." });
+    }
+
+    if (existingHashes.length > 0) {
+      // Partial duplicate — keep only new pairs, adjust payout
+      dupStatus = "partial";
+      const existingSet = new Set(existingHashes);
+      const newIndices: number[] = [];
+      pairHashes.forEach((h, i) => { if (!existingSet.has(h)) newIndices.push(i); });
+      filteredDialogues = newIndices.map((i: number) => dialogues[i]);
+      filteredPairHashes = newIndices.map((i: number) => pairHashes[i]);
+
+      const newUsefulLines = filteredDialogues.filter((d: any) => d.isUseful).length;
+      const qualityRate = 0.5 + (dataset.metadata?.avgSuitabilityScore || 50) / 100 * 3.5;
+      const demoMultiplier = (profile as any).demographicOptIn ? 2 : 1;
+      dataset.payoutAmount = parseFloat((newUsefulLines * qualityRate * demoMultiplier).toFixed(2));
+      dataset.dialogues = filteredDialogues;
+      dataset.metadata = { ...dataset.metadata, totalUsefulLines: newUsefulLines, partialDuplicate: true, newPairsOnly: newIndices.length };
+    }
+
+    dataset.contentHash = contentHash;
+    // ── End duplicate detection ──────────────────────────────────────────────
+
     database.createDataset(dataset);
+    if (filteredPairHashes.length > 0) {
+      database.insertPairHashes(filteredPairHashes, dataset.id, userId);
+    }
+    database.updateDatasetHash(dataset.id, contentHash, dupStatus);
 
     res.json({
       success: true,
       dataset,
+      ...(dupStatus === "partial" ? { warning: "partial_duplicate", message: "Some turns in this chat have been submitted before. Your payout reflects only the new content." } : {}),
     });
   } catch (error: any) {
     console.error("Critical error in /api/process-chat:", error);
@@ -765,6 +821,171 @@ app.post("/api/admin/payout-approve", requireAdmin, (req, res) => {
     dataset: database.getDataset(datasetId),
   });
 });
+
+// ── Admin: Picture-password verify ────────────────────────────────────────
+app.post("/api/admin/picture-verify", (req, res) => {
+  const ip = (req.headers["x-forwarded-for"] as string || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+  const now = Date.now();
+
+  // Rate limit: 3 attempts per 15 minutes per IP
+  const attempt = adminAttempts.get(ip);
+  if (attempt) {
+    if (attempt.resetAt > now && attempt.count >= 3) {
+      return res.status(429).json({ error: "Too many attempts." });
+    }
+    if (attempt.resetAt <= now) {
+      adminAttempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 });
+    } else {
+      attempt.count++;
+    }
+  } else {
+    adminAttempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 });
+  }
+
+  const { sequence } = req.body;
+  if (!Array.isArray(sequence) || sequence.length !== ADMIN_CLICK_SEQUENCE.length) {
+    return res.status(401).json({ error: "Invalid." });
+  }
+
+  const match = sequence.every((z: string, i: number) => z === ADMIN_CLICK_SEQUENCE[i]);
+  if (!match) {
+    return res.status(401).json({ error: "Invalid." });
+  }
+
+  // Generate single-use temp token, 60s TTL
+  const token = crypto.randomBytes(32).toString("hex");
+  adminTempTokens.set(token, now + 60 * 1000);
+  return res.json({ token });
+});
+
+// ── Admin: Passphrase verify + session creation ────────────────────────────
+app.post("/api/admin/auth", async (req, res) => {
+  const { tempToken, passphrase } = req.body;
+  const now = Date.now();
+
+  const expires = adminTempTokens.get(tempToken);
+  if (!expires || expires < now) {
+    adminTempTokens.delete(tempToken);
+    return res.status(401).json({ error: "Token expired or invalid." });
+  }
+
+  if (!ADMIN_PASSPHRASE || passphrase !== ADMIN_PASSPHRASE) {
+    adminTempTokens.delete(tempToken);
+    return res.status(401).json({ error: "Invalid passphrase." });
+  }
+
+  adminTempTokens.delete(tempToken); // single-use
+
+  // Check for existing admin user, create if none
+  let adminUserId: string;
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@chat2cash.internal";
+
+  try {
+    // Try to sign in as admin
+    const signInRes = await auth.api.signInEmail({
+      body: { email: adminEmail, password: ADMIN_PASSPHRASE, callbackURL: "/admin-dashboard" },
+      headers: req.headers as any,
+      asResponse: true,
+    });
+
+    // Forward Set-Cookie from Better Auth to the client
+    const setCookie = signInRes.headers.get("set-cookie");
+    if (setCookie) res.setHeader("Set-Cookie", setCookie);
+
+    return res.json({ success: true });
+  } catch {
+    // Admin user doesn't exist — create it
+    try {
+      await auth.api.signUpEmail({
+        body: {
+          email: adminEmail,
+          password: ADMIN_PASSPHRASE,
+          name: "Admin",
+          callbackURL: "/admin-dashboard",
+        },
+        headers: req.headers as any,
+      });
+
+      // Update role to admin via DB directly
+      const userRow = (database as any).db?.prepare("SELECT id FROM user WHERE email = ?").get(adminEmail) as any;
+      if (userRow) {
+        (database as any).db?.prepare("UPDATE user SET role = 'admin' WHERE id = ?").run(userRow.id);
+      }
+
+      // Sign in now
+      const signInRes2 = await auth.api.signInEmail({
+        body: { email: adminEmail, password: ADMIN_PASSPHRASE, callbackURL: "/admin-dashboard" },
+        headers: req.headers as any,
+        asResponse: true,
+      });
+      const setCookie2 = signInRes2.headers.get("set-cookie");
+      if (setCookie2) res.setHeader("Set-Cookie", setCookie2);
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("[admin/auth] Failed:", err);
+      return res.status(500).json({ error: "Admin auth failed." });
+    }
+  }
+});
+
+// ── Admin: Dataset list ────────────────────────────────────────────────────
+app.get("/api/admin/datasets", requireAdmin, (_req, res) => {
+  res.json(database.getAllDatasetsAdmin());
+});
+
+// ── Admin: Dataset export ──────────────────────────────────────────────────
+app.get("/api/admin/datasets/:id/export", requireAdmin, (req, res) => {
+  const dataset = database.getDataset(req.params.id);
+  if (!dataset) return res.status(404).json({ error: "Not found." });
+  res.setHeader("Content-Disposition", `attachment; filename="${req.params.id}.json"`);
+  res.setHeader("Content-Type", "application/json");
+  res.send(JSON.stringify(dataset, null, 2));
+});
+
+// ── Admin: Export all approved/disbursed as JSONL ─────────────────────────
+app.get("/api/admin/export-all", requireAdmin, (_req, res) => {
+  const datasets = database.getAllDatasetsAdmin().filter((d: any) => d.status !== "Pending Review");
+  const lines = datasets.map((d: any) => JSON.stringify({ id: d.id, userId: d.userId, dialogues: d.dialogues, metadata: d.metadata }));
+  res.setHeader("Content-Disposition", "attachment; filename=\"chat2cash-export.jsonl\"");
+  res.setHeader("Content-Type", "application/x-ndjson");
+  res.send(lines.join("\n"));
+});
+
+// ── Admin: Add proof of payment ────────────────────────────────────────────
+app.post("/api/admin/payout-proof", requireAdmin, async (req: any, res) => {
+  const { datasetId, receiptNumber } = req.body;
+  if (!datasetId || !receiptNumber) return res.status(400).json({ error: "Missing fields." });
+
+  const txs = database.getTransactionsByDataset(datasetId);
+  if (!txs.length) return res.status(404).json({ error: "No transaction found for this dataset." });
+
+  database.addPayoutProof(txs[0].id, receiptNumber);
+  database.addAuditLog("proof_added", req.session?.user?.id || null, datasetId, `Receipt: ${receiptNumber}`);
+  res.json({ success: true });
+});
+
+// ── Admin: Flagged submissions ─────────────────────────────────────────────
+app.get("/api/admin/flagged", requireAdmin, (_req, res) => {
+  res.json(database.getFlaggedDatasets());
+});
+
+// ── Admin: Override flag ───────────────────────────────────────────────────
+app.post("/api/admin/flag-override", requireAdmin, async (req: any, res) => {
+  const { datasetId } = req.body;
+  if (!datasetId) return res.status(400).json({ error: "Missing datasetId." });
+  database.clearFlag(datasetId);
+  database.addAuditLog("flag_override", req.session?.user?.id || null, datasetId);
+  res.json({ success: true });
+});
+
+// ── Admin: Audit log ──────────────────────────────────────────────────────
+app.get("/api/admin/audit", requireAdmin, (_req, res) => {
+  res.json(database.getAuditLog());
+});
+
+// Also wire existing payout-approve to log
+// (payout-approve endpoint kept at line 754 — add audit call there)
 
 // Serve frontend build static files in production
 if (process.env.NODE_ENV === "production") {

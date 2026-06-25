@@ -96,6 +96,39 @@ export class ChatDB {
       )
     `);
 
+    // Dialogue hashes — one row per pair for cross-user duplicate detection
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS dialogue_hashes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pairHash TEXT NOT NULL,
+        datasetId TEXT NOT NULL,
+        userId TEXT NOT NULL,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_pair_hash ON dialogue_hashes(pairHash)`);
+
+    // Audit log — admin actions
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action TEXT NOT NULL,
+        adminId TEXT,
+        targetId TEXT,
+        note TEXT,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Migrate existing tables — add columns if missing
+    const addIfMissing = (table: string, col: string, def: string) => {
+      try { this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); } catch {}
+    };
+    addIfMissing("datasets", "contentHash", "TEXT");
+    addIfMissing("datasets", "dupStatus", "TEXT DEFAULT 'clean'");
+    addIfMissing("transactions", "receiptNumber", "TEXT");
+    addIfMissing("transactions", "proofAddedAt", "TEXT");
+
     console.log("[DB] Schema initialized");
   }
 
@@ -239,6 +272,70 @@ export class ChatDB {
       ...row,
       wipayResponse: JSON.parse(row.wipayResponse)
     }));
+  }
+
+  // Duplicate detection
+  contentHashExists(hash: string): boolean {
+    const row = this.db.prepare("SELECT 1 FROM datasets WHERE contentHash = ? LIMIT 1").get(hash);
+    return row !== undefined;
+  }
+
+  getExistingPairHashes(pairHashes: string[]): string[] {
+    if (!pairHashes.length) return [];
+    const placeholders = pairHashes.map(() => "?").join(",");
+    const rows = this.db.prepare(`SELECT pairHash FROM dialogue_hashes WHERE pairHash IN (${placeholders})`).all(...pairHashes) as any[];
+    return rows.map(r => r.pairHash);
+  }
+
+  insertPairHashes(pairHashes: string[], datasetId: string, userId: string) {
+    const insert = this.db.prepare("INSERT OR IGNORE INTO dialogue_hashes (pairHash, datasetId, userId) VALUES (?, ?, ?)");
+    const insertMany = this.db.transaction((hashes: string[]) => {
+      for (const h of hashes) insert.run(h, datasetId, userId);
+    });
+    insertMany(pairHashes);
+  }
+
+  updateDatasetHash(datasetId: string, contentHash: string, dupStatus: string) {
+    this.db.prepare("UPDATE datasets SET contentHash = ?, dupStatus = ? WHERE id = ?").run(contentHash, dupStatus, datasetId);
+  }
+
+  getFlaggedDatasets() {
+    const rows = this.db.prepare("SELECT * FROM datasets WHERE dupStatus != 'clean' ORDER BY createdAt DESC").all() as any[];
+    return rows.map(r => ({ ...r, metadata: JSON.parse(r.metadata), dialogues: JSON.parse(r.dialogues) }));
+  }
+
+  clearFlag(datasetId: string) {
+    this.db.prepare("UPDATE datasets SET dupStatus = 'clean', updatedAt = CURRENT_TIMESTAMP WHERE id = ?").run(datasetId);
+  }
+
+  // Proof of payment
+  addPayoutProof(transactionId: string, receiptNumber: string) {
+    this.db.prepare("UPDATE transactions SET receiptNumber = ?, proofAddedAt = CURRENT_TIMESTAMP WHERE id = ?")
+      .run(receiptNumber, transactionId);
+  }
+
+  getTransactionsByDataset(datasetId: string) {
+    const rows = this.db.prepare("SELECT * FROM transactions WHERE datasetId = ? ORDER BY createdAt DESC").all(datasetId) as any[];
+    return rows.map(r => ({ ...r, wipayResponse: JSON.parse(r.wipayResponse || "{}") }));
+  }
+
+  // Audit log
+  addAuditLog(action: string, adminId: string | null, targetId: string, note?: string) {
+    this.db.prepare("INSERT INTO audit_log (action, adminId, targetId, note) VALUES (?, ?, ?, ?)").run(action, adminId, targetId, note || "");
+  }
+
+  getAuditLog(limit = 100) {
+    return this.db.prepare("SELECT * FROM audit_log ORDER BY createdAt DESC LIMIT ?").all(limit);
+  }
+
+  // Admin — all datasets with profile join
+  getAllDatasetsAdmin() {
+    const rows = this.db.prepare(`
+      SELECT d.*, p.fullName, p.email, p.wipayLink, p.wipayAccount
+      FROM datasets d LEFT JOIN profiles p ON d.userId = p.userId
+      ORDER BY d.createdAt DESC
+    `).all() as any[];
+    return rows.map(r => ({ ...r, metadata: JSON.parse(r.metadata || "{}"), dialogues: JSON.parse(r.dialogues || "[]") }));
   }
 
   // Voice waitlist operations
