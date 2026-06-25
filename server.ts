@@ -707,13 +707,25 @@ Respond strictly in valid JSON:
     };
 
     // ── Duplicate detection ──────────────────────────────────────────────────
+    // Block flagged accounts
+    if (database.isAccountFlagged(userId)) {
+      return res.status(403).json({ error: "account_flagged", message: "Your account has been flagged for suspicious activity. Contact support." });
+    }
+
     const dialoguePairs = dialogues.map((d: any) => ({ speaker: d.speaker || "", text: d.text || d.response || "" }));
     const contentHash = hashContent(dialoguePairs);
     const pairHashes = hashPairs(dialoguePairs);
 
-    // Full content duplicate
+    // Full content duplicate → strike
     if (database.contentHashExists(contentHash)) {
-      return res.status(409).json({ error: "duplicate", message: "This chat export has already been submitted. Please submit a different conversation." });
+      const { strikes, flagged } = database.addStrike(userId);
+      database.addAuditLog("duplicate_detected", null, userId, `Full duplicate — strike ${strikes}/4${flagged ? " — ACCOUNT FLAGGED" : ""}`);
+      return res.status(409).json({
+        error: "duplicate",
+        message: "This chat export has already been submitted. Please submit a different conversation.",
+        strikes,
+        accountFlagged: flagged,
+      });
     }
 
     // Per-pair cross-user duplicate check
@@ -723,8 +735,15 @@ Respond strictly in valid JSON:
     let filteredPairHashes = pairHashes;
 
     if (existingHashes.length === pairHashes.length && pairHashes.length > 0) {
-      // All pairs are duplicates
-      return res.status(409).json({ error: "duplicate", message: "This chat export has already been submitted. Please submit a different conversation." });
+      // All pairs are duplicates → strike
+      const { strikes, flagged } = database.addStrike(userId);
+      database.addAuditLog("duplicate_detected", null, userId, `All pairs duplicate — strike ${strikes}/4${flagged ? " — ACCOUNT FLAGGED" : ""}`);
+      return res.status(409).json({
+        error: "duplicate",
+        message: "This chat export has already been submitted. Please submit a different conversation.",
+        strikes,
+        accountFlagged: flagged,
+      });
     }
 
     if (existingHashes.length > 0) {
@@ -984,8 +1003,19 @@ app.get("/api/admin/audit", requireAdmin, (_req, res) => {
   res.json(database.getAuditLog());
 });
 
-// Also wire existing payout-approve to log
-// (payout-approve endpoint kept at line 754 — add audit call there)
+// ── Admin: Flagged accounts ────────────────────────────────────────────────
+app.get("/api/admin/flagged-accounts", requireAdmin, (_req, res) => {
+  res.json(database.getFlaggedAccounts());
+});
+
+// ── Admin: Clear strikes on an account ────────────────────────────────────
+app.post("/api/admin/clear-strikes", requireAdmin, async (req: any, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: "Missing userId." });
+  database.clearStrikes(userId);
+  database.addAuditLog("strikes_cleared", req.session?.user?.id || null, userId);
+  res.json({ success: true });
+});
 
 // Serve frontend build static files in production
 if (process.env.NODE_ENV === "production") {

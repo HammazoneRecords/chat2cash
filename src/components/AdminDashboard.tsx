@@ -10,12 +10,13 @@ type Dataset = {
 
 type FlaggedDataset = Dataset & { dupStatus: "duplicate" | "partial" | "flagged" };
 
-type Tab = "datasets" | "flagged" | "audit";
+type Tab = "datasets" | "flagged" | "accounts" | "audit";
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("datasets");
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [flagged, setFlagged] = useState<FlaggedDataset[]>([]);
+  const [flaggedAccounts, setFlaggedAccounts] = useState<any[]>([]);
   const [auditLog, setAuditLog] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [receiptInputs, setReceiptInputs] = useState<Record<string, string>>({});
@@ -24,13 +25,15 @@ export default function AdminDashboard() {
   const load = async () => {
     setLoading(true);
     try {
-      const [dsRes, flRes, auRes] = await Promise.all([
+      const [dsRes, flRes, acRes, auRes] = await Promise.all([
         fetch("/api/admin/datasets", { credentials: "include" }),
         fetch("/api/admin/flagged", { credentials: "include" }),
+        fetch("/api/admin/flagged-accounts", { credentials: "include" }),
         fetch("/api/admin/audit", { credentials: "include" }),
       ]);
       if (dsRes.ok) setDatasets(await dsRes.json());
       if (flRes.ok) setFlagged(await flRes.json());
+      if (acRes.ok) setFlaggedAccounts(await acRes.json());
       if (auRes.ok) setAuditLog(await auRes.json());
     } finally {
       setLoading(false);
@@ -76,6 +79,16 @@ export default function AdminDashboard() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ datasetId, receiptNumber }),
+      credentials: "include",
+    });
+    load();
+  };
+
+  const clearStrikes = async (userId: string) => {
+    await fetch("/api/admin/clear-strikes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
       credentials: "include",
     });
     load();
@@ -127,19 +140,23 @@ export default function AdminDashboard() {
           {card("Pending review", datasets.filter(d => d.status === "Pending Review").length)}
           {card("Disbursed", datasets.filter(d => d.status === "Disbursed").length)}
           {card("JMD paid out", `$${Math.round(totalPaid).toLocaleString()}`)}
-          {card("Flagged", flagged.length)}
+          {card("Flagged datasets", flagged.length)}
+          {card("Flagged accounts", flaggedAccounts.length)}
         </div>
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: "1px solid #1e293b", paddingBottom: 12 }}>
-          {(["datasets", "flagged", "audit"] as Tab[]).map(t => (
+          {(["datasets", "flagged", "accounts", "audit"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: "6px 16px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 700,
               cursor: "pointer",
               background: tab === t ? "#10b981" : "transparent",
               color: tab === t ? "#060a13" : "#64748b",
             }}>
-              {t === "datasets" ? "Datasets" : t === "flagged" ? `Flagged (${flagged.length})` : "Audit Log"}
+              {t === "datasets" ? "Datasets"
+                : t === "flagged" ? `Flagged (${flagged.length})`
+                : t === "accounts" ? `Accounts (${flaggedAccounts.length} flagged)`
+                : "Audit Log"}
             </button>
           ))}
         </div>
@@ -239,6 +256,29 @@ export default function AdminDashboard() {
                     <div style={{ fontSize: 12, color: "#64748b" }}>Flag: <span style={{ color: "#fb923c", fontWeight: 700 }}>{d.dupStatus}</span></div>
                   </div>
                   <button onClick={() => clearFlag(d.id)} style={btnStyle("#1a3a1a", "#4ade80")}>Clear Flag</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Flagged accounts tab */}
+        {!loading && tab === "accounts" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {flaggedAccounts.length === 0 && <div style={{ color: "#64748b", fontSize: 13 }}>No flagged accounts.</div>}
+            {flaggedAccounts.map((a: any) => (
+              <div key={a.userId} style={{ background: "#0d0a08", border: "1px solid #7c3a1e", borderRadius: 10, padding: "14px 16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{a.fullName}</div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>{a.email}</div>
+                    <div style={{ fontSize: 11, fontFamily: "monospace", color: "#fb923c", marginTop: 4 }}>
+                      {a.strikes}/4 strikes · flagged {a.flaggedAt?.slice(0, 10)}
+                    </div>
+                  </div>
+                  <button onClick={() => clearStrikes(a.userId)} style={btnStyle("#1a3a1a", "#4ade80")}>
+                    Clear Strikes
+                  </button>
                 </div>
               </div>
             ))}

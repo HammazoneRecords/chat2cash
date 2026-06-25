@@ -128,6 +128,9 @@ export class ChatDB {
     addIfMissing("datasets", "dupStatus", "TEXT DEFAULT 'clean'");
     addIfMissing("transactions", "receiptNumber", "TEXT");
     addIfMissing("transactions", "proofAddedAt", "TEXT");
+    addIfMissing("profiles", "strikes", "INTEGER DEFAULT 0");
+    addIfMissing("profiles", "accountFlagged", "INTEGER DEFAULT 0");
+    addIfMissing("profiles", "flaggedAt", "TEXT");
 
     console.log("[DB] Schema initialized");
   }
@@ -272,6 +275,40 @@ export class ChatDB {
       ...row,
       wipayResponse: JSON.parse(row.wipayResponse)
     }));
+  }
+
+  // Strike system — 4 strikes → account flagged
+  addStrike(userId: string): { strikes: number; flagged: boolean } {
+    const profile = this.db.prepare("SELECT strikes, accountFlagged FROM profiles WHERE userId = ?").get(userId) as any;
+    if (!profile) return { strikes: 0, flagged: false };
+    if (profile.accountFlagged) return { strikes: profile.strikes, flagged: true };
+
+    const newStrikes = (profile.strikes || 0) + 1;
+    const shouldFlag = newStrikes >= 4;
+
+    this.db.prepare(`
+      UPDATE profiles SET
+        strikes = ?,
+        accountFlagged = ?,
+        flaggedAt = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE flaggedAt END,
+        updatedAt = CURRENT_TIMESTAMP
+      WHERE userId = ?
+    `).run(newStrikes, shouldFlag ? 1 : 0, shouldFlag ? 1 : 0, userId);
+
+    return { strikes: newStrikes, flagged: shouldFlag };
+  }
+
+  isAccountFlagged(userId: string): boolean {
+    const row = this.db.prepare("SELECT accountFlagged FROM profiles WHERE userId = ?").get(userId) as any;
+    return row?.accountFlagged === 1;
+  }
+
+  clearStrikes(userId: string) {
+    this.db.prepare("UPDATE profiles SET strikes = 0, accountFlagged = 0, flaggedAt = NULL, updatedAt = CURRENT_TIMESTAMP WHERE userId = ?").run(userId);
+  }
+
+  getFlaggedAccounts() {
+    return this.db.prepare("SELECT userId, fullName, email, strikes, flaggedAt FROM profiles WHERE accountFlagged = 1 ORDER BY flaggedAt DESC").all();
   }
 
   // Duplicate detection
