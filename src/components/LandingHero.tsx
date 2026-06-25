@@ -332,7 +332,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               <div className="bg-[#050810] rounded-2xl border border-emerald-900/30 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-900/20 bg-emerald-950/20">
                   <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wide">Rich Exchange</span>
-                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-900/40 px-2 py-0.5 rounded-full">~$3.80 JMD</span>
+                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-900/40 px-2 py-0.5 rounded-full">~$157 JMD</span>
                 </div>
                 <div className="p-4 space-y-2.5">
                   <div className="flex gap-2">
