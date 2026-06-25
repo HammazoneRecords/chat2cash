@@ -337,11 +337,11 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                 <div className="p-4 space-y-2.5">
                   <div className="flex gap-2">
                     <span className="text-[9px] font-bold font-mono text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded shrink-0 mt-0.5">PROMPT</span>
-                    <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"me a try write up me business plan but cyaan figure out if fi incorporate first or wait till me land more clients — wah you think?"</p>
+                    <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"me a try write up me business plan but mi cyaan figure out if mi fi incorporate first or wait till me land more clients and a make some real money — wah you think?"</p>
                   </div>
                   <div className="flex gap-2">
                     <span className="text-[9px] font-bold font-mono text-emerald-600 bg-emerald-950/40 border border-emerald-900/30 px-1.5 py-0.5 rounded shrink-0 mt-0.5">REPLY</span>
-                    <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"Incorporate first. It set the tone and mek yuh look serious from day one. Plus yuh cyaan open a proper business account without it. The client nuh care, but the bank will."</p>
+                    <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"Incorporate it fuss. It a go set the tone and mek yuh look serious from day one yuh zimmie. Plus yuh cyaan a open a proppa business account without it. Unless dem change dat but eida way incorporate it"</p>
                   </div>
                   <div className="pt-1 border-t border-emerald-900/20">
                     <span className="text-[9px] text-emerald-700 font-mono">High density — real question, actionable advice, Patois-authentic</span>
