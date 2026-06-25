@@ -25,8 +25,9 @@ export default function AdminLogin() {
   };
 
   const handleZoneClick = useCallback(async (e: React.MouseEvent<SVGElement>) => {
-    const zone = (e.target as SVGElement).getAttribute("data-zone") as ZoneId | null;
-    if (!zone || phase !== "picture") return;
+    if (phase !== "picture") return;
+    // All clicks count — zone ID or null (non-zone clicks still register as attempts)
+    const zone = ((e.target as SVGElement).getAttribute("data-zone") || "XX") as ZoneId;
 
     const next = [...clicks, { zone, ts: Date.now() }];
     setClicks(next);
@@ -102,7 +103,7 @@ export default function AdminLogin() {
             ref={svgRef}
             viewBox="0 0 400 300"
             xmlns="http://www.w3.org/2000/svg"
-            style={{ width: "100%", borderRadius: 16, cursor: phase === "picture" ? "crosshair" : "default" }}
+            style={{ width: "100%", borderRadius: 16, cursor: phase === "picture" ? "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>☥</text></svg>\") 12 12, auto" : "default" }}
             onClick={phase === "picture" ? handleZoneClick : undefined}
           >
             <rect width="400" height="300" fill="#060a13" rx="12"/>
@@ -134,23 +135,9 @@ export default function AdminLogin() {
             <rect data-zone="V3" x="315" y="120" width="30" height="100" fill="transparent" style={{ cursor: "pointer" }}/>
             <rect data-zone="R2" x="340" y="60" width="40" height="120" fill="transparent" style={{ cursor: "pointer" }}/>
 
-            {/* Click progress dots */}
-            {clicks.map((_, i) => (
-              <circle key={i} cx={30 + (340 / TOTAL_CLICKS) * (i + 0.5)} cy={285}
-                r="4" fill="#10b981" opacity={0.7 + i * 0.06}/>
-            ))}
+            {/* No progress indicator — all clicks look the same to the outside */}
           </svg>
 
-          {/* Progress indicator */}
-          {phase === "picture" && clicks.length > 0 && (
-            <div style={{
-              position: "absolute", bottom: 8, right: 12,
-              fontSize: 10, color: "#10b981", fontFamily: "monospace",
-              fontWeight: 700, letterSpacing: 2,
-            }}>
-              {clicks.length}/{TOTAL_CLICKS}
-            </div>
-          )}
         </div>
 
         {/* Passphrase input — slides in after correct sequence */}
