@@ -103,7 +103,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Invalid reviewed JSON.");
         setActiveDataset(result.draft);
-        setStatusMessage("Reviewed JSON validated. Inspect the draft before submitting.");
+        setStatusMessage(result.draft?.metadata?.duplicatePreview?.message || "Reviewed JSON validated. Inspect the draft before submitting.");
         return;
       }
 
@@ -415,7 +415,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-between pt-2">
             <div className="flex items-center gap-2 text-slate-500 text-xs font-mono">
               <Clock className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Local HIPAA & GDPR mapping compliant. Private names are swapped instantly.</span>
+              <span>Browser reads the file first; submitted records store sanitized dialogue, not raw source lines.</span>
             </div>
 
             <button
@@ -506,7 +506,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                     ) : (
                       <>
                         <CreditCard className="w-4 h-4 text-slate-950" />
-                        <span>CLAIM DISBURSEMENT</span>
+                        <span>REQUEST PAYOUT REVIEW</span>
                       </>
                     )}
                   </button>
@@ -649,10 +649,10 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
             <div className="bg-[#050810]/95 p-6 sm:p-8 space-y-6 border-b border-slate-800">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-emerald-400 text-xs font-mono font-bold tracking-widest uppercase block">Anonymized Sandbox</span>
-                  <h2 className="text-2xl font-display font-black text-white">Pre-Download Verification Sandbox</h2>
+                  <span className="text-emerald-400 text-xs font-mono font-bold tracking-widest uppercase block">Anonymized Review</span>
+                  <h2 className="text-2xl font-display font-black text-white">Review Before Download or Submit</h2>
                   <p className="text-slate-400 text-xs mt-1">
-                    Examine prompt-response paired objects with clean masked participant tags before generating static export files.
+                    Check the sanitized prompt-response pairs, download JSON/CSV if you want to inspect them offline, then submit only when you are ready.
                   </p>
                 </div>
                 
@@ -685,6 +685,26 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                     <span>Download CSV</span>
                   </button>
                 </div>
+              </div>
+
+              {(activeDataset.metadata as any).duplicatePreview && (
+                <div className={`rounded-xl border p-3 text-xs ${
+                  (activeDataset.metadata as any).duplicatePreview.wouldStrikeOnSubmit
+                    ? "bg-red-950/30 border-red-900/45 text-red-200"
+                    : (activeDataset.metadata as any).duplicatePreview.status === "partial_duplicate"
+                      ? "bg-amber-950/30 border-amber-900/45 text-amber-200"
+                      : "bg-emerald-950/25 border-emerald-900/35 text-emerald-200"
+                }`}>
+                  <div className="font-bold uppercase tracking-wider font-mono text-[10px] mb-1">Duplicate preview before final submit</div>
+                  <p className="leading-relaxed">{(activeDataset.metadata as any).duplicatePreview.message}</p>
+                  {(activeDataset.metadata as any).duplicatePreview.wouldStrikeOnSubmit && (
+                    <p className="mt-2 font-bold">Submitting this duplicate will add a strike to this account.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-slate-800 bg-[#050810] p-3 text-[11px] text-slate-400 leading-relaxed">
+                JSON files are for review and portability. On submit, the server recomputes anonymization checks, duplicate hashes, scoring, and payout; client-provided score, payout, status, role, and identity fields are ignored.
               </div>
 
               {/* Filtering Controls */}

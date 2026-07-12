@@ -369,6 +369,38 @@ app.post("/api/upload-json", requireSession, (req: any, res) => {
 
     const { dialogues, warnings } = validateCanonicalJson(req.body);
     const canonicalHash = hashCanonicalDialogues(dialogues);
+    const existingDataset = database.getDatasetByContentHash(canonicalHash);
+    const jsonPairHashes = dialogues.map((dialogue) =>
+      hashPair("canonical-pair", `${dialogue.prompt}\n${dialogue.response}`),
+    );
+    const existingPairHashes = database.getExistingPairHashes(jsonPairHashes);
+    const duplicatePreview = existingDataset
+      ? {
+        status: existingDataset.userId === req.session.user.id ? "already_submitted_by_you" : "exact_duplicate",
+        matchedPairs: jsonPairHashes.length,
+        totalPairs: jsonPairHashes.length,
+        wouldStrikeOnSubmit: existingDataset.userId !== req.session.user.id,
+        message: existingDataset.userId === req.session.user.id
+          ? "This anonymized dataset was already submitted by your account. Submitting again will restore the existing receipt instead of creating a new payout."
+          : "This anonymized dataset was already submitted by another account. Submitting it would add a duplicate strike.",
+      }
+      : existingPairHashes.length > 0
+        ? {
+          status: existingPairHashes.length === jsonPairHashes.length ? "all_pairs_duplicate" : "partial_duplicate",
+          matchedPairs: existingPairHashes.length,
+          totalPairs: jsonPairHashes.length,
+          wouldStrikeOnSubmit: existingPairHashes.length === jsonPairHashes.length,
+          message: existingPairHashes.length === jsonPairHashes.length
+            ? "All dialogue pairs in this reviewed JSON were already received. Submitting it would add a duplicate strike."
+            : `${existingPairHashes.length} of ${jsonPairHashes.length} dialogue pairs were already received. Submitting will keep only new dialogue pairs.`,
+        }
+        : {
+          status: "clean",
+          matchedPairs: 0,
+          totalPairs: jsonPairHashes.length,
+          wouldStrikeOnSubmit: false,
+          message: "No duplicate dialogue pairs detected in preview.",
+        };
     const normalizedMessages = dialogues.flatMap((dialogue, index) => [
       { index: index * 2, speaker: "Speaker A", text: dialogue.prompt },
       { index: index * 2 + 1, speaker: "Speaker B", text: dialogue.response },
@@ -402,6 +434,7 @@ app.post("/api/upload-json", requireSession, (req: any, res) => {
         segmentationVersion: SEGMENTATION_VERSION,
         anonymizationRules: ["Validated canonical anonymized JSON", "Client scores and identity fields ignored"],
         warnings,
+        duplicatePreview,
         totalLinesAnalyzed: dialogues.length * 2,
         totalUsefulLines: 0,
         suitabilityScore: null,
@@ -931,6 +964,35 @@ Respond strictly in valid JSON:
     const pairHashes = canonicalDialogues.map((dialogue: any) =>
       hashPair("canonical-pair", `${dialogue.prompt}\n${dialogue.response}`),
     );
+    const previewExistingDataset = database.getDatasetByContentHash(contentHash);
+    const previewExistingPairHashes = database.getExistingPairHashes(pairHashes);
+    const duplicatePreview = previewExistingDataset
+      ? {
+        status: previewExistingDataset.userId === req.session.user.id ? "already_submitted_by_you" : "exact_duplicate",
+        matchedPairs: pairHashes.length,
+        totalPairs: pairHashes.length,
+        wouldStrikeOnSubmit: previewExistingDataset.userId !== req.session.user.id,
+        message: previewExistingDataset.userId === req.session.user.id
+          ? "This chat was already submitted by your account. Submitting again will restore the existing receipt instead of creating a new payout."
+          : "This chat was already submitted by another account. Submitting it would add a duplicate strike.",
+      }
+      : previewExistingPairHashes.length > 0
+        ? {
+          status: previewExistingPairHashes.length === pairHashes.length ? "all_pairs_duplicate" : "partial_duplicate",
+          matchedPairs: previewExistingPairHashes.length,
+          totalPairs: pairHashes.length,
+          wouldStrikeOnSubmit: previewExistingPairHashes.length === pairHashes.length,
+          message: previewExistingPairHashes.length === pairHashes.length
+            ? "All dialogue pairs in this chat were already received. Submitting it would add a duplicate strike."
+            : `${previewExistingPairHashes.length} of ${pairHashes.length} dialogue pairs were already received. Submitting will keep only new dialogue pairs.`,
+        }
+        : {
+          status: "clean",
+          matchedPairs: 0,
+          totalPairs: pairHashes.length,
+          wouldStrikeOnSubmit: false,
+          message: "No duplicate dialogue pairs detected in preview.",
+        };
     const normalizedMessages = rawAnonymizedTurns.map((turn, index) => ({
       index,
       speaker: turn.speaker,
@@ -1007,6 +1069,7 @@ Respond strictly in valid JSON:
         payoutRatePerUsefulLine: ratePerPair,
         totalLinesAnalyzed,
         totalUsefulLines,
+        duplicatePreview,
         uniqueUserTokens: uniqueTokens,
         estimatedTokens,
         segments,

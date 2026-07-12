@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { 
-  History, Search, RefreshCw, Layers, CheckCircle, Clock, 
-  UserCheck, ShieldAlert, Coins, ExternalLink, Calendar, Landmark
+  History, Search, RefreshCw, Layers, Clock, 
+  UserCheck, ShieldAlert, Coins, Calendar, Landmark
 } from "lucide-react";
 import { motion } from "motion/react";
 import { ProcessedDataset } from "../types";
@@ -80,9 +80,9 @@ export default function ReconciliationLedger() {
           </div>
           <div>
             <div className="text-2xl font-bold font-display text-white">
-              XCD {datasets.reduce((acc, curr) => acc + curr.payoutAmount, 0).toLocaleString(undefined, { minimumFractionDigits: 1 })}
+              JMD {datasets.reduce((acc, curr) => acc + curr.payoutAmount, 0).toLocaleString(undefined, { minimumFractionDigits: 1 })}
             </div>
-            <div className="text-[10px] tracking-widest font-mono font-bold text-slate-400 uppercase">Settlement Pool</div>
+            <div className="text-[10px] tracking-widest font-mono font-bold text-slate-400 uppercase">Payouts Under Review</div>
           </div>
         </div>
 
@@ -101,8 +101,8 @@ export default function ReconciliationLedger() {
             <UserCheck className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-2xl font-bold font-display text-white">{profiles.length}</div>
-            <div className="text-[10px] tracking-widest font-mono font-bold text-slate-400 uppercase">Linked Identity Keys</div>
+            <div className="text-2xl font-bold font-display text-white">{datasets.length}</div>
+            <div className="text-[10px] tracking-widest font-mono font-bold text-slate-400 uppercase">Anonymous Receipts</div>
           </div>
         </div>
 
@@ -112,7 +112,7 @@ export default function ReconciliationLedger() {
           </div>
           <div>
             <div className="text-2xl font-bold font-display text-amber-300">7 - 14 Days</div>
-            <div className="text-[10px] tracking-widest font-mono font-bold text-amber-400 uppercase">Compliance Lock</div>
+            <div className="text-[10px] tracking-widest font-mono font-bold text-amber-400 uppercase">Review Window</div>
           </div>
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function ReconciliationLedger() {
                 Durable Dataset Reconciliation Ledger
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Real-time transaction checks, verified Escrow states, and secure Gateway records.
+                Anonymous receipt records for submitted datasets. Public rows do not show contributor contact details or raw chat content.
               </p>
             </div>
             
@@ -138,7 +138,7 @@ export default function ReconciliationLedger() {
               className="px-4 py-2 bg-[#0d1425] hover:bg-[#15203b] text-slate-300 text-xs rounded-xl font-bold border border-slate-800 transition-all flex items-center gap-1.5 self-start select-none disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>REFRESH HARVEST DIALECTS</span>
+              <span>Refresh ledger</span>
             </button>
           </div>
 
@@ -150,7 +150,7 @@ export default function ReconciliationLedger() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Lookup by Dataset hash, UserId token, Email profile, or File name..."
+                placeholder="Lookup by dataset ID, anonymous receipt, status, or file receipt..."
                 className="w-full pl-10 pr-4 py-3 bg-[#060a13] border border-slate-850 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all text-slate-100 placeholder-slate-600"
               />
             </div>
@@ -185,7 +185,7 @@ export default function ReconciliationLedger() {
             <thead>
               <tr className="bg-[#050810] border-b border-slate-850 text-slate-500 font-mono font-bold uppercase tracking-wider text-[10px]">
                 <th className="py-4 px-6">Dataset Hash / Date</th>
-                <th className="py-4 px-4">User ID Compliance Record</th>
+                <th className="py-4 px-4">Anonymous Receipt</th>
                 <th className="py-4 px-4 text-center">Linguistic Quality Matrix</th>
                 <th className="py-4 px-4">Escrow Status</th>
                 <th className="py-4 px-6 text-right">WiPay Ledger Log</th>
@@ -195,7 +195,7 @@ export default function ReconciliationLedger() {
               {filteredDatasets.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-16 text-center text-slate-500 font-mono">
-                    No matching compliance logs found in records. Refine filters or harvest new blocks.
+                    No matching public ledger records found. Refine filters or refresh the ledger.
                   </td>
                 </tr>
               ) : (
@@ -213,13 +213,13 @@ export default function ReconciliationLedger() {
                       </div>
                     </td>
 
-                    {/* User ID / Profile info */}
+                    {/* Anonymous receipt info */}
                     <td className="py-5 px-4 space-y-1">
                       <div className="bg-emerald-950/40 text-emerald-300 font-mono text-[10px] px-2.5 py-0.5 rounded-md w-fit font-bold border border-emerald-900/30">
                         {d.userId}
                       </div>
                       <div className="text-slate-300 font-semibold text-[11px] font-sans">{d.userEmail}</div>
-                      <div className="text-slate-500 text-[10px] font-mono">{d.userPhone}</div>
+                      <div className="text-slate-500 text-[10px] font-mono">No public phone or email</div>
                     </td>
 
                     {/* Evaluation Rating */}
@@ -248,15 +248,8 @@ export default function ReconciliationLedger() {
                         <span className="font-bold text-slate-200 font-mono text-[11px] uppercase tracking-wide">{d.status}</span>
                       </div>
 
-                      {/* Mock backoffice approval */}
                       {d.status === "Approved" && (
-                        <button
-                          onClick={() => handleApproveDisbursement(d.id)}
-                          className="px-2.5 py-1 text-[9px] bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-400 font-bold rounded-lg border border-emerald-900/30 block cursor-pointer"
-                          title="Simulate backoffice audit approval to release fund escrow limits immediately"
-                        >
-                          Manual Approve Escrow Release
-                        </button>
+                        <div className="text-[10px] text-blue-300 font-mono">Awaiting payout proof</div>
                       )}
                     </td>
 
@@ -293,10 +286,10 @@ export default function ReconciliationLedger() {
       <div className="p-6 sm:p-7 bg-slate-950 text-slate-200 rounded-3xl border border-slate-800 space-y-4">
         <div className="flex items-center gap-2 text-amber-300">
           <ShieldAlert className="w-5 h-5 text-amber-400" />
-          <h4 className="text-sm font-bold uppercase font-display tracking-widest text-[#f59e0b]">WiPay Escrow Clearing Regulatory Charter</h4>
+          <h4 className="text-sm font-bold uppercase font-display tracking-widest text-[#f59e0b]">Payout Review Notice</h4>
         </div>
         <p className="text-xs text-slate-400 leading-relaxed">
-          Due to Anti-Money Laundering (AML) controls and corporate data training mandates, all harvested dial datasets logged on this browser's records receive a standard <strong>7 to 14 days clearing window</strong>. The regulatory board approves entries mapping directly to valid WiPay Merchant ID records matching registered phone and email indexes on-chain.
+          Submitted datasets receive a standard <strong>7 to 14 day review window</strong> before payout proof is added. This public ledger shows anonymous receipt records, payout status, and sanitized metadata only. Contributor names, phones, emails, and raw chat content are not shown here.
         </p>
       </div>
 

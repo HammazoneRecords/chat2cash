@@ -122,7 +122,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
           transition={{ delay: 0.2, duration: 0.8 }}
           className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed"
         >
-          Convert your text chat threads into clean, instruction-optimized training samples for custom LLM models. Strip names, numbers, and dates locally. Get rewarded via{" "}
+          Convert your text chat threads into clean, instruction-optimized training samples for custom LLM models. Your browser extracts the file, then the server temporarily sanitizes and scores the text without storing raw source lines. Get rewarded via{" "}
           <span className="font-semibold text-emerald-400">WiPay Caribbean</span>.
         </motion.p>
 
@@ -157,8 +157,8 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
           transition={{ delay: 0.3, duration: 0.6 }}
           className="text-xs text-slate-500 text-center"
         >
-          Yardie accent, country voice, thick Patois — however yuh talk, that's exactly what we need.{" "}
-          <span className="text-emerald-400 font-semibold">The more authentic, the higher it scores.</span>
+          Voice-note payouts are waitlist-only right now. For text chats, Patois is welcome when the meaning and context are clear.{" "}
+          <span className="text-emerald-400 font-semibold">Real useful turns score better than empty filler.</span>
         </motion.p>
 
         {/* 2 CTA Buttons */}
@@ -230,9 +230,9 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
           <div className="p-3 rounded-xl bg-emerald-950/60 text-emerald-400 w-fit border border-emerald-900/40">
             <Shield className="w-5 h-5" />
           </div>
-          <h3 className="text-md sm:text-lg font-display font-bold text-white">Guaranteed Privacy Masking</h3>
+          <h3 className="text-md sm:text-lg font-display font-bold text-white">Transparent Privacy Masking</h3>
           <p className="text-sm text-slate-400 leading-relaxed">
-            All names, phone numbers, and emails are stripped locally and mapped to random pseudonym tags (e.g., Speaker A, Speaker B) before leaving your device.
+            Your browser reads the export file first. Temporary raw text is sent for sanitization and scoring, then stored records keep anonymized speaker tags and safe metadata instead of raw source lines.
           </p>
         </div>
 
@@ -273,10 +273,10 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 pt-2">
               <div className="text-center">
                 <div className="flex items-center gap-2">
-                  <div className="text-2xl font-bold font-mono text-emerald-400">$0.50 – $8 JMD</div>
+                  <div className="text-2xl font-bold font-mono text-emerald-400">$0.50 – $4 JMD</div>
                   <span className="text-[9px] font-black text-emerald-300 bg-emerald-900/50 border border-emerald-700/50 px-1.5 py-0.5 rounded-full tracking-widest self-center">×2</span>
                 </div>
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Per Useful Turn</div>
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Base per useful turn</div>
               </div>
               <div className="hidden sm:block text-slate-700 text-2xl font-light">×</div>
               <div className="text-center">
@@ -290,6 +290,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               </div>
             </div>
             <div className="text-[11px] text-slate-500 font-mono pt-1">
+              Text rates: <span className="text-slate-400">$0.50-$4 JMD per useful turn, up to $8 JMD with the optional 2x demographic multiplier.</span><br />
               Currency guide: <span className="text-slate-400">JMD 1,000 ≈ TTD 46 ≈ BBD 8.80</span> &nbsp;·&nbsp; Rates updated monthly
             </div>
           </div>
@@ -383,9 +384,9 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                   </div>
                   <span className="text-[9px] bg-emerald-500 text-slate-950 font-extrabold px-2 py-0.5 rounded uppercase tracking-widest">PREMIUM TIER</span>
                 </div>
-                <h3 className="text-xl font-display font-bold text-white">Voice Notes — Coming Soon</h3>
+                <h3 className="text-xl font-display font-bold text-white">Voice Notes — Waitlist Only</h3>
                 <p className="text-sm text-slate-400 leading-relaxed max-w-lg">
-                  Caribbean accent audio for TTS/STT/ASR models. Yardie, country, urban — every dialect, every tone. Accent-rich voice notes are the most valuable data in Caribbean AI.
+                  Voice-note uploads are not live yet. Join the waitlist if you want to be notified when Caribbean accent audio payouts open.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded-full font-mono">$300 JMD short clip</span>
@@ -405,7 +406,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
             {/* Placeholder voice note example cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800/50">
               <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest sm:col-span-2">
-                Sample Voice Clips (Launching with Voice Notes Phase 2)
+                Sample Voice Clips (not available for upload yet)
               </div>
 
               <div className="bg-[#050810] rounded-2xl border border-slate-800 p-4 space-y-3">
@@ -481,7 +482,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               <div className="text-sm font-mono font-bold text-teal-400">STEP // 02</div>
               <h4 className="text-md font-bold text-white">Anonymize and Preview Pairs</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Drop the exported chat zip into the secure purification container. Real-time algorithms immediately pseudonymize references to prevent private identity data leaks.
+                Drop the exported chat zip into the review tool. The server temporarily processes the raw text, returns an anonymized draft, and stores only the submitted sanitized dataset.
               </p>
             </div>
           </div>
@@ -491,7 +492,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               <div className="text-sm font-mono font-bold text-emerald-400">STEP // 03</div>
               <h4 className="text-md font-bold text-white">Claim via WiPay</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Submit your unique registered <strong>UserId</strong> index. Log rewards securely and check real-time audit milestones on our public reconciliation ledger.
+                Submit the anonymized draft after review. Rewards are tied to your signed-in account privately, while the public ledger shows anonymous receipt records only.
               </p>
             </div>
           </div>
@@ -508,7 +509,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                 Vocal Audio Payouts
               </h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Accent-rich Caribbean voice notes are highly demanded for audio AI training. Every dialect welcomed — the rarer your voice, the higher it scores.
+                Voice note payouts are not live yet. Join the waitlist and we will notify you when audio submissions open.
               </p>
             </div>
             <div className="pt-2 z-10">
@@ -578,7 +579,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                     </div>
                     <h2 className="text-xl font-display font-bold text-white">Voice Notes — Get Notified</h2>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      Drop your details. You'll be first to know when voice note payouts launch — and first in the payout queue.
+                      Drop your details. We'll notify you when voice note payouts launch. Text-chat payouts are the live feature today.
                     </p>
                   </div>
                   <button
@@ -593,7 +594,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                   <div className="py-8 text-center space-y-3">
                     <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
                     <div className="text-white font-bold text-lg">You're on the list.</div>
-                    <p className="text-sm text-slate-400">We'll reach out when voice notes launch. First come, first paid.</p>
+                    <p className="text-sm text-slate-400">We'll reach out when voice notes launch.</p>
                     <button
                       onClick={() => { setShowVoiceModal(false); setVoiceSuccess(false); }}
                       className="mt-4 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm transition-all cursor-pointer"
