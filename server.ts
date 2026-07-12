@@ -470,6 +470,37 @@ app.post("/api/submit-json-draft", requireSession, (req: any, res) => {
     const submittedDialogues = unseenIndices.map(index => dialogues[index]);
     const submittedPairHashes = unseenIndices.map(index => jsonPairHashes[index]);
     const duplicateStatus = existingPairHashes.length > 0 ? "partial" : "clean";
+    const normalizedMessages = submittedDialogues.flatMap((dialogue, index) => [
+      { index: index * 2, speaker: "Speaker A", text: dialogue.prompt.replace(/^\[[^\]]+\]:\s*/, ""), gapBucket: "short" as const },
+      { index: index * 2 + 1, speaker: "Speaker B", text: dialogue.response.replace(/^\[[^\]]+\]:\s*/, ""), gapBucket: "short" as const },
+    ]);
+    const segments = segmentConversation(normalizedMessages);
+    const grades = segments.map(segment => ({ segment, grade: gradeSegment(normalizedMessages, segment) }));
+    const contextSignals = detectContextSignals(normalizedMessages);
+    const gradedDialogues = submittedDialogues.map((d, index) => ({
+      id: `dialogue-${index}`,
+      ...d,
+      isUseful: false,
+      score: 20,
+      category: "Contextual Conversation",
+      explanation: "Server recomputed from reviewed anonymized JSON.",
+    }));
+    applyContextAwareDialogueLabels(gradedDialogues, grades);
+    const totalUsefulLines = gradedDialogues.filter((dialogue: any) => dialogue.isUseful).length;
+    const suitabilityScore = grades.length
+      ? Math.round(grades.reduce((sum, entry) => sum + (entry.grade?.overallScore || 0), 0) / grades.length)
+      : 0;
+    const qualityRate = 0.50 + (suitabilityScore / 100) * 3.50;
+    const ratePerPair = Number((profile.demographicOptIn ? qualityRate * 2 : qualityRate).toFixed(2));
+    const payoutAmount = Number((totalUsefulLines * ratePerPair).toFixed(2));
+    const tierInputs = grades.map(({ grade }) => ({
+      tier: grade.dimensions.instructional.score >= 70 ? "instructional" as const
+        : grade.dimensions.followupValue.score >= 60 ? "contextual" as const
+          : grade.dimensions.languageVariation.score >= 55 ? "language" as const
+            : totalUsefulLines > 0 ? "conversational" as const : "rejected" as const,
+      units: 1,
+    }));
+    const payout = calculateTieredPayout(tierInputs, profile.demographicOptIn ? 2 : 1);
     const datasetId = `DS-${Date.now()}`;
     const timestamp = new Date().toISOString();
     const dataset: any = {
@@ -481,30 +512,32 @@ app.post("/api/submit-json-draft", requireSession, (req: any, res) => {
       purifiedFileName: `whatsapp_dataset_${userId}_${Date.now()}.json`,
       timestamp,
       status: "Pending Review",
-      payoutAmount: 0,
+      payoutAmount,
       currency: profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD",
+      contentHash,
+      hashVersion: "v1",
       metadata: {
         jsonVersion: "c2c-json-v1",
-        evaluatorVersion: "pending-context-grader",
-        segmentationVersion: "pending-context-segmenter",
+        evaluatorVersion: EVALUATOR_VERSION,
+        segmentationVersion: SEGMENTATION_VERSION,
+        contentHash,
+        hashVersion: "v1",
         anonymizationRules: ["Canonical anonymized JSON validated server-side"],
-        evaluationSummary: "Queued for context-aware moderation review.",
-        suitabilityScore: null,
-        payoutRatePerUsefulLine: 0,
+        evaluationSummary: "Reviewed JSON recomputed with context-aware grading before submission.",
+        suitabilityScore,
+        payoutRatePerUsefulLine: ratePerPair,
         totalLinesAnalyzed: submittedDialogues.length * 2,
-        totalUsefulLines: 0,
+        totalUsefulLines,
         partialDuplicate: duplicateStatus === "partial",
         newPairsOnly: submittedDialogues.length,
-        uniqueUserTokens: 0,
-        estimatedTokens: 0,
+        uniqueUserTokens: Math.round(submittedDialogues.length * 2 * 4.8),
+        estimatedTokens: Math.round(submittedDialogues.length * 2 * 15.2),
+        segments,
+        grades,
+        contextSignals,
+        payout,
       },
-      dialogues: submittedDialogues.map((d, index) => ({
-        id: `dialogue-${index}`,
-        ...d,
-        isUseful: false,
-        score: 0,
-        category: "Pending Context Review",
-      })),
+      dialogues: gradedDialogues,
     };
 
     database.createDataset(dataset);

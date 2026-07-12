@@ -240,9 +240,23 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Draft submission failed.");
+      if (!response.ok) {
+        if (result.error === "duplicate") {
+          const strikeMsg = result.accountFlagged
+            ? " Your account is now locked."
+            : result.strikes ? ` Strike ${result.strikes}/4.` : "";
+          throw new Error((result.message || "Duplicate submission detected.") + strikeMsg);
+        }
+        throw new Error(result.message || result.error || "Draft submission failed.");
+      }
       setActiveDataset(result.dataset);
-      setStatusMessage(result.idempotent ? "Existing submission restored." : "Anonymous dataset submitted for review.");
+      setStatusMessage(
+        result.warning === "partial_duplicate"
+          ? result.message || "Partial duplicate detected — payout adjusted to new content only."
+          : result.idempotent
+            ? "Existing submission restored. This duplicate was already counted under your account."
+            : "Anonymous dataset submitted for review with pricing applied."
+      );
       fetchReceipt(result.dataset.id);
     } catch (err: any) {
       setError(err?.message || "Draft submission failed.");

@@ -132,6 +132,21 @@ test("JSON duplicate submit path applies the same strike policy as ZIP", () => {
   assert.match(submitJsonSection, /database\.addStrike\(userId\)/);
   assert.match(submitJsonSection, /Reviewed JSON all-pairs duplicate/);
   assert.match(submitJsonSection, /partial_duplicate/);
+  assert.match(submitJsonSection, /payoutAmount/);
+  assert.match(submitJsonSection, /payoutRatePerUsefulLine: ratePerPair/);
+  assert.match(submitJsonSection, /applyContextAwareDialogueLabels\(gradedDialogues, grades\)/);
+  assert.doesNotMatch(submitJsonSection, /category: "Pending Context Review"/);
+});
+
+test("reviewed draft submit surfaces duplicate and partial duplicate messages", () => {
+  const submitHandler = fileProcessor.slice(
+    fileProcessor.indexOf("const handleSubmitReviewedDraft"),
+    fileProcessor.indexOf("// Secure export to CSV format"),
+  );
+  assert.match(submitHandler, /result\.error === "duplicate"/);
+  assert.match(submitHandler, /Strike \$\{result\.strikes\}\/4/);
+  assert.match(submitHandler, /partial_duplicate/);
+  assert.match(submitHandler, /pricing applied/);
 });
 
 test("production bundle and staff invite route are present", () => {
