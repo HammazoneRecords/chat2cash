@@ -125,12 +125,24 @@ export class ChatDB {
       try { this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); } catch {}
     };
     addIfMissing("datasets", "contentHash", "TEXT");
+    addIfMissing("datasets", "hashVersion", "TEXT DEFAULT 'v1'");
     addIfMissing("datasets", "dupStatus", "TEXT DEFAULT 'clean'");
     addIfMissing("transactions", "receiptNumber", "TEXT");
     addIfMissing("transactions", "proofAddedAt", "TEXT");
     addIfMissing("profiles", "strikes", "INTEGER DEFAULT 0");
     addIfMissing("profiles", "accountFlagged", "INTEGER DEFAULT 0");
     addIfMissing("profiles", "flaggedAt", "TEXT");
+    try {
+      this.db.exec("DROP INDEX IF EXISTS idx_dataset_content_hash");
+      this.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_dataset_content_hash_version ON datasets(contentHash, hashVersion) WHERE contentHash IS NOT NULL");
+    } catch (err) {
+      console.warn("[DB] Could not create unique content hash index; duplicate legacy rows require review.", err);
+    }
+    try {
+      this.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_transaction_dataset ON transactions(datasetId) WHERE datasetId IS NOT NULL");
+    } catch (err) {
+      console.warn("[DB] Could not create unique transaction index; duplicate legacy payouts require review.", err);
+    }
 
     console.log("[DB] Schema initialized");
   }
@@ -215,6 +227,12 @@ export class ChatDB {
       };
     }
     return null;
+  }
+
+  getDatasetByContentHash(contentHash: string, hashVersion = "v1") {
+    const row = this.db.prepare("SELECT * FROM datasets WHERE contentHash = ? AND (hashVersion = ? OR (hashVersion IS NULL AND ? = 'v1')) LIMIT 1").get(contentHash, hashVersion, hashVersion) as any;
+    if (!row) return null;
+    return { ...row, metadata: JSON.parse(row.metadata), dialogues: JSON.parse(row.dialogues) };
   }
 
   getAllDatasets() {
@@ -332,8 +350,8 @@ export class ChatDB {
     insertMany(pairHashes);
   }
 
-  updateDatasetHash(datasetId: string, contentHash: string, dupStatus: string) {
-    this.db.prepare("UPDATE datasets SET contentHash = ?, dupStatus = ? WHERE id = ?").run(contentHash, dupStatus, datasetId);
+  updateDatasetHash(datasetId: string, contentHash: string, dupStatus: string, hashVersion = "v1") {
+    this.db.prepare("UPDATE datasets SET contentHash = ?, hashVersion = ?, dupStatus = ? WHERE id = ?").run(contentHash, hashVersion, dupStatus, datasetId);
   }
 
   getFlaggedDatasets() {
@@ -354,6 +372,10 @@ export class ChatDB {
   getTransactionsByDataset(datasetId: string) {
     const rows = this.db.prepare("SELECT * FROM transactions WHERE datasetId = ? ORDER BY createdAt DESC").all(datasetId) as any[];
     return rows.map(r => ({ ...r, wipayResponse: JSON.parse(r.wipayResponse || "{}") }));
+  }
+
+  updateTransactionStatus(transactionId: string, status: string) {
+    this.db.prepare("UPDATE transactions SET status = ? WHERE id = ?").run(status, transactionId);
   }
 
   // Audit log

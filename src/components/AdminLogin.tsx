@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from "react";
+import { authClient } from "../../lib/auth-client";
 
 const TOTAL_CLICKS = 5;
 
@@ -13,6 +14,9 @@ export default function AdminLogin() {
   const [tempToken, setTempToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
   const svgRef = useRef<SVGSVGElement>(null);
 
   const triggerShake = () => {
@@ -22,6 +26,27 @@ export default function AdminLogin() {
       setClicks([]);
       setPhase("picture");
     }, 600);
+  };
+
+  const handleEmailLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoginError("");
+    setLoading(true);
+    try {
+      const { error } = await authClient.signIn.email({ email: email.trim(), password });
+      if (error) throw new Error(error.message || "Sign in failed.");
+
+      const roleCheck = await fetch("/api/admin/staff", { credentials: "include" });
+      if (!roleCheck.ok) {
+        await authClient.signOut();
+        throw new Error("This account does not have admin access.");
+      }
+      window.location.href = "/admin-dashboard";
+    } catch (error: any) {
+      setLoginError(error?.message || "Unable to sign in.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleZoneClick = useCallback(async (e: React.MouseEvent<SVGElement>) => {
@@ -96,6 +121,35 @@ export default function AdminLogin() {
         width: "100%", maxWidth: 440,
         animation: shake ? "shake 0.4s ease" : undefined,
       }}>
+
+        <div style={{ marginBottom: 24, padding: 22, background: "#080d1a", border: "1px solid #1e293b", borderRadius: 12 }}>
+          <div style={{ color: "#fff", fontSize: 20, fontWeight: 900, marginBottom: 6 }}>Admin Sign In</div>
+          <div style={{ color: "#64748b", fontSize: 12, marginBottom: 18 }}>Use your assigned staff account.</div>
+          {loginError && <div style={{ color: "#fca5a5", fontSize: 12, marginBottom: 12 }}>{loginError}</div>}
+          <form onSubmit={handleEmailLogin} style={{ display: "grid", gap: 10 }}>
+            <input
+              type="email"
+              autoComplete="email"
+              placeholder="Admin email"
+              value={email}
+              onChange={event => setEmail(event.target.value)}
+              required
+              style={fieldStyle}
+            />
+            <input
+              type="password"
+              autoComplete="current-password"
+              placeholder="Password"
+              value={password}
+              onChange={event => setPassword(event.target.value)}
+              required
+              style={fieldStyle}
+            />
+            <button type="submit" disabled={loading} style={{ ...emailButtonStyle, opacity: loading ? 0.6 : 1 }}>
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+        </div>
 
         {/* Logo — click zones active */}
         <div style={{ position: "relative", marginBottom: 32 }}>
@@ -194,3 +248,13 @@ export default function AdminLogin() {
     </div>
   );
 }
+
+const fieldStyle = {
+  width: "100%", boxSizing: "border-box" as const, padding: "12px 14px", background: "#060a13",
+  border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0", fontSize: 14, outline: "none",
+};
+
+const emailButtonStyle = {
+  padding: "12px 0", background: "#10b981", color: "#060a13", border: "none",
+  borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: "pointer" as const,
+};

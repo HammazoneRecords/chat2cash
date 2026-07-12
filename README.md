@@ -24,6 +24,7 @@ The solution ensures rigorous privacy standards by executing all sanitization an
 *   **Backend**: Node.js + Express.js + TSX (direct execution)
 *   **AI Engine**: `deepseek-chat` API (server-side, via native `fetch`)
 *   **Build Tool**: Vite (bundling frontend) & Esbuild (bundling backend)
+*   **Package Manager**: pnpm 10.33.0 via Corepack
 
 ---
 
@@ -43,10 +44,10 @@ To boot both the Express backend and the Vite frontend simultaneously, run:
 
 ```bash
 # Install package dependencies
-npm install
+corepack pnpm install
 
 # Launch Development Server (Express on port 3000 proxies Vite hmr)
-npm run dev
+corepack pnpm dev
 ```
 
 Open [http://localhost:4001](http://localhost:4001) in your browser.
@@ -57,10 +58,10 @@ Compile both client-side static bundles and the bundled CommonJS backend:
 
 ```bash
 # Build Vite client files & compile server.ts to dist/server.cjs
-npm run build
+corepack pnpm run build
 
 # Start production server
-npm run start
+corepack pnpm start
 ```
 
 ---

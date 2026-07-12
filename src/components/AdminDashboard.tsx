@@ -10,7 +10,7 @@ type Dataset = {
 
 type FlaggedDataset = Dataset & { dupStatus: "duplicate" | "partial" | "flagged" };
 
-type Tab = "datasets" | "flagged" | "accounts" | "audit";
+type Tab = "datasets" | "flagged" | "accounts" | "staff" | "audit";
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("datasets");
@@ -18,23 +18,27 @@ export default function AdminDashboard() {
   const [flagged, setFlagged] = useState<FlaggedDataset[]>([]);
   const [flaggedAccounts, setFlaggedAccounts] = useState<any[]>([]);
   const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [receiptInputs, setReceiptInputs] = useState<Record<string, string>>({});
+  const [expandedDatasetId, setExpandedDatasetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [dsRes, flRes, acRes, auRes] = await Promise.all([
+      const [dsRes, flRes, acRes, auRes, staffRes] = await Promise.all([
         fetch("/api/admin/datasets", { credentials: "include" }),
         fetch("/api/admin/flagged", { credentials: "include" }),
         fetch("/api/admin/flagged-accounts", { credentials: "include" }),
         fetch("/api/admin/audit", { credentials: "include" }),
+        fetch("/api/admin/staff", { credentials: "include" }),
       ]);
       if (dsRes.ok) setDatasets(await dsRes.json());
       if (flRes.ok) setFlagged(await flRes.json());
       if (acRes.ok) setFlaggedAccounts(await acRes.json());
       if (auRes.ok) setAuditLog(await auRes.json());
+      if (staffRes.ok) setStaff(await staffRes.json());
     } finally {
       setLoading(false);
     }
@@ -67,6 +71,16 @@ export default function AdminDashboard() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ datasetId }),
+      credentials: "include",
+    });
+    load();
+  };
+
+  const decideModeration = async (datasetId: string, decision: "approve" | "reject" | "hold" | "correction") => {
+    await fetch("/api/moderation/decision", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ datasetId, decision, reason: `Admin dashboard decision: ${decision}` }),
       credentials: "include",
     });
     load();
@@ -114,6 +128,25 @@ export default function AdminDashboard() {
     load();
   };
 
+  const inviteStaff = async () => {
+    const email = window.prompt("Staff email");
+    const role = window.prompt("Role: moderator or admin", "moderator");
+    if (!email || !role) return;
+    await fetch("/api/admin/staff/invite", {
+      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+      body: JSON.stringify({ email, role }),
+    });
+    load();
+  };
+
+  const staffAction = async (path: string, userId: string, body: any = {}) => {
+    await fetch(path, {
+      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+      body: JSON.stringify({ userId, ...body }),
+    });
+    load();
+  };
+
   const handleLogout = async () => {
     await authClient.signOut();
     window.location.href = "/";
@@ -156,7 +189,7 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: "1px solid #1e293b", paddingBottom: 12 }}>
-          {(["datasets", "flagged", "accounts", "audit"] as Tab[]).map(t => (
+          {(["datasets", "flagged", "accounts", "staff", "audit"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: "6px 16px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 700,
               cursor: "pointer",
@@ -166,6 +199,7 @@ export default function AdminDashboard() {
               {t === "datasets" ? "Datasets"
                 : t === "flagged" ? `Flagged (${flagged.length})`
                 : t === "accounts" ? `Accounts (${flaggedAccounts.length} flagged)`
+                : t === "staff" ? `Staff (${staff.length})`
                 : "Audit Log"}
             </button>
           ))}
@@ -216,6 +250,9 @@ export default function AdminDashboard() {
 
                   <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                     <button onClick={() => exportDataset(d.id)} style={btnStyle("#1e293b", "#94a3b8")}>Export JSON</button>
+                    <button onClick={() => setExpandedDatasetId(expandedDatasetId === d.id ? null : d.id)} style={btnStyle("#0f3460", "#93c5fd")}>
+                      {expandedDatasetId === d.id ? "Hide Review" : "Review Evidence"}
+                    </button>
 
                     {d.wipayLink && (
                       <a href={d.wipayLink} target="_blank" rel="noreferrer" style={{ ...btnStyle("#0f3460", "#60a5fa"), textDecoration: "none", display: "inline-block" }}>
@@ -224,13 +261,27 @@ export default function AdminDashboard() {
                     )}
 
                     {d.status === "Pending Review" && (
-                      <button onClick={() => approvePayout(d.id, d.userId, d.payoutAmount)} style={btnStyle("#14532d", "#86efac")}>
-                        Approve Payout
-                      </button>
+                      <>
+                        <button onClick={() => decideModeration(d.id, "approve")} style={btnStyle("#14532d", "#86efac")}>
+                          Approve Review
+                        </button>
+                        <button onClick={() => decideModeration(d.id, "hold")} style={btnStyle("#3f2f12", "#fbbf24")}>
+                          Hold
+                        </button>
+                        <button onClick={() => decideModeration(d.id, "correction")} style={btnStyle("#1e293b", "#93c5fd")}>
+                          Request Correction
+                        </button>
+                        <button onClick={() => decideModeration(d.id, "reject")} style={btnStyle("#7f1d1d", "#fca5a5")}>
+                          Reject
+                        </button>
+                      </>
                     )}
 
                     {d.status === "Approved" && (
                       <>
+                        <button onClick={() => approvePayout(d.id, d.userId, d.payoutAmount)} style={btnStyle("#14532d", "#86efac")}>
+                          Queue Payout
+                        </button>
                         <div style={{ display: "flex", gap: 6 }}>
                           <input
                             placeholder="Receipt #"
@@ -247,6 +298,35 @@ export default function AdminDashboard() {
                       </>
                     )}
                   </div>
+
+                  {expandedDatasetId === d.id && (
+                    <div style={{ marginTop: 14, padding: 14, background: "#050810", border: "1px solid #1e293b", borderRadius: 8, display: "grid", gap: 12 }}>
+                      <div>
+                        <div style={evidenceLabel}>Context signals</div>
+                        {d.metadata?.contextSignals?.length ? d.metadata.contextSignals.map((signal: any, index: number) => (
+                          <div key={index} style={evidenceRow}>{signal.kind} · message {signal.fromMessage} → {signal.toMessage} · {Math.round((signal.confidence || 0) * 100)}%</div>
+                        )) : <div style={evidenceEmpty}>No context signals were detected.</div>}
+                      </div>
+                      <div>
+                        <div style={evidenceLabel}>Conversation segments</div>
+                        {d.metadata?.segments?.length ? d.metadata.segments.map((segment: any) => (
+                          <div key={segment.id} style={evidenceRow}>{segment.id} · {segment.topicLabel} · boundary confidence {Math.round((segment.boundaryConfidence || 0) * 100)}%</div>
+                        )) : <div style={evidenceEmpty}>No segmentation metadata is available.</div>}
+                      </div>
+                      <div>
+                        <div style={evidenceLabel}>Score evidence</div>
+                        {d.metadata?.grades?.length ? d.metadata.grades.map((entry: any, index: number) => (
+                          <div key={index} style={evidenceRow}>segment {entry.segment?.id} · overall {entry.grade?.overallScore ?? "-"}/100 · confidence {Math.round((entry.grade?.confidence || 0) * 100)}%</div>
+                        )) : <div style={evidenceEmpty}>No grading metadata is available.</div>}
+                      </div>
+                      <div>
+                        <div style={evidenceLabel}>Payout tiers</div>
+                        {d.metadata?.payout?.breakdown?.length ? d.metadata.payout.breakdown.map((tier: any) => (
+                          <div key={tier.tier} style={evidenceRow}>{tier.tier} · {tier.units} unit(s) · {tier.amount} {d.currency}</div>
+                        )) : <div style={evidenceEmpty}>No tier breakdown is available.</div>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -300,6 +380,25 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {!loading && tab === "staff" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button onClick={inviteStaff} style={btnStyle("#14532d", "#86efac")}>Invite Staff Member</button>
+            {staff.map((member: any) => (
+              <div key={member.id} style={{ background: "#080d1a", border: "1px solid #1e293b", borderRadius: 10, padding: "14px 16px", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ color: "#fff", fontWeight: 700 }}>{member.name}</div>
+                  <div style={{ color: "#64748b", fontSize: 12 }}>{member.email} · {member.role}</div>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {member.role !== "owner" && <button onClick={() => staffAction("/api/admin/staff/disable", member.id, { disabled: true })} style={btnStyle("#7f1d1d", "#fca5a5")}>Disable</button>}
+                  {member.role !== "owner" && <button onClick={() => staffAction("/api/admin/staff/disable", member.id, { disabled: false })} style={btnStyle("#1a3a1a", "#4ade80")}>Enable</button>}
+                  {member.role !== "owner" && <button onClick={() => staffAction("/api/admin/staff/revoke-sessions", member.id)} style={btnStyle("#3f2f12", "#fbbf24")}>Revoke Sessions</button>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Audit log tab */}
         {!loading && tab === "audit" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -317,6 +416,19 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+const evidenceLabel = {
+  color: "#10b981", fontSize: 10, fontWeight: 800, letterSpacing: 0.8,
+  textTransform: "uppercase" as const, marginBottom: 5,
+};
+
+const evidenceRow = {
+  color: "#cbd5e1", fontSize: 12, lineHeight: 1.5,
+};
+
+const evidenceEmpty = {
+  color: "#64748b", fontSize: 12,
+};
 
 function btnStyle(bg: string, color: string) {
   return {

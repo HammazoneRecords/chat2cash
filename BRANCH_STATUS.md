@@ -5,7 +5,7 @@
 **VPS container:** `mw-chat2cash`
 **VPS port:** 4001
 **Repo:** `HammazoneRecords/chat2cash`
-**Stack:** Vite + React + TS + Express + Better Auth + SQLite + pnpm
+**Stack:** Vite + React + TS + Express + Better Auth + SQLite + pnpm `10.33.0`
 
 ---
 
@@ -13,9 +13,34 @@
 
 | Branch | Last Updated | Deployed? | Notes |
 |---|---|---|---|
-| `main` | 2026-06-24 | ✅ Production | Admin login + duplicate detection + 4-strike system deployed |
+| `main` | 2026-07-06 | ✅ Production | Tooling normalized to pinned pnpm `10.33.0`; auth fix remains deployed. |
 
 ## Last Action
+
+**Date:** 2026-07-06
+**Branch:** main
+**Action:** Package manager normalization
+**What changed:**
+- `package.json`: Added `packageManager: "pnpm@10.33.0"` so Corepack uses one pnpm version.
+- `pnpm-workspace.yaml`: Moved pnpm build allowlist (`better-sqlite3`, `esbuild`, `sharp`) out of deprecated `package.json.pnpm`.
+- Docs updated to use `corepack pnpm ...` commands consistently.
+
+---
+
+**Date:** 2026-06-30
+**Branch:** main
+**Action:** Auth fix — account creation broken since deployment, now working
+**What changed:**
+- `lib/auth.ts`: Fixed DB adapter (`{db, type:"sqlite"}` → raw `sqlite`) — commit `edee619`
+- `lib/auth.ts`: Added manual `CREATE TABLE IF NOT EXISTS` migration for Better Auth tables — commit `76596c7`
+- Created `chat2cash_auth_facts.md` — current auth setup reference
+- Created `chat2cash_fails_fix.md` — diagnostic log of both fix attempts
+- Created `chat2cash_LESSONS.md` — architectural lessons for template reuse
+- Updated `.deepseek/SYSTEM.md` with fails-fix + lessons conventions
+
+---
+
+## Previous Actions
 
 **Date:** 2026-06-23
 **Branch:** main
@@ -67,6 +92,7 @@ None.
 
 | Date | Branch | Action | Notes |
 |---|---|---|---|
+| 2026-07-06 | main | Package manager pin | Standardized on pnpm `10.33.0`; moved build allowlist to `pnpm-workspace.yaml` |
 | 2026-06-24 | main | BRANCH_STATUS updated | Major session overhaul documented |
 | 2026-06-23 | main | Deploy — full overhaul | See Last Action above |
 | 2026-06-20 | main | Initial extraction from ZIP | Swapped Gemini → DeepSeek, fixed WiPay defaults |

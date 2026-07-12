@@ -61,6 +61,7 @@
 | Feature | Date stated | Notes |
 |---|---|---|
 | Transcription app integration | 2026-06-24 | Link or embed the transcription app (Frame 2) — transcribers come from chat2cash audience |
+| Live matched conversations — 3× payout | 2026-06-25 | Signed-in users matched by topic, both must confirm, live chat session earns 3× standard rate ($1.50–$12 JMD/turn); demographic ×2 stacks to $24 JMD/turn max; anti-gaming: same-IP block, 2-min minimum, AI eval still applies, 4-strike system |
 
 ---
 

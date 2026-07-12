@@ -73,9 +73,10 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
     
     const isTxt = selectedFile.name.endsWith(".txt");
     const isZip = selectedFile.name.endsWith(".zip");
+    const isJson = selectedFile.name.endsWith(".json");
 
-    if (!isTxt && !isZip) {
-      setError("Please select a standard WhatsApp text (.txt) file or zipped (.zip) archive.");
+    if (!isTxt && !isZip && !isJson) {
+      setError("Please select a WhatsApp text (.txt), zipped (.zip), or reviewed JSON (.json) file.");
       return;
     }
 
@@ -90,6 +91,22 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
     setError("");
 
     try {
+      if (file.name.endsWith(".json")) {
+        setStatusMessage("Validating reviewed anonymized JSON...");
+        const jsonText = await file.text();
+        const response = await fetch("/api/upload-json", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: jsonText,
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Invalid reviewed JSON.");
+        setActiveDataset(result.draft);
+        setStatusMessage("Reviewed JSON validated. Inspect the draft before submitting.");
+        return;
+      }
+
       let chatText = "";
 
       if (file.name.endsWith(".zip")) {
@@ -125,11 +142,12 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
       const response = await fetch("/api/process-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatText,
-          fileName: file.name,
-          userId: user.userId,
-        }),
+          body: JSON.stringify({
+            chatText,
+            fileName: file.name,
+            userId: user.userId,
+            draftOnly: true,
+          }),
       });
 
       const result = await response.json();
@@ -166,20 +184,33 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
   // Secure export to JSON format
   const handleDownloadJSON = () => {
     if (!activeDataset) return;
+    const metadata = activeDataset.metadata as any;
     const cleanData = {
-      datasetId: activeDataset.id,
-      userId: activeDataset.userId,
-      contactEmail: activeDataset.userEmail,
-      contactPhone: activeDataset.userPhone,
-      timestamp: activeDataset.timestamp,
-      modelSuitabilityScore: activeDataset.metadata.suitabilityScore,
-      summary: activeDataset.metadata.evaluationSummary,
-      trainingData: activeDataset.dialogues.map((d) => ({
+      schemaVersion: "c2c-json-v1",
+      draftId: activeDataset.id,
+      contentHash: (activeDataset as any).contentHash || metadata.contentHash || null,
+      hashVersion: (activeDataset as any).hashVersion || metadata.hashVersion || "v1",
+      reviewMetadata: {
+        evaluatorVersion: metadata.evaluatorVersion || null,
+        segmentationVersion: metadata.segmentationVersion || null,
+        anonymizationRules: metadata.anonymizationRules || [],
+        warnings: metadata.warnings || [],
+        evaluationSummary: metadata.evaluationSummary || "",
+        totals: {
+          linesAnalyzed: metadata.totalLinesAnalyzed || 0,
+          usefulTurns: metadata.totalUsefulLines || 0,
+          uniqueTokens: metadata.uniqueUserTokens || 0,
+          estimatedTokens: metadata.estimatedTokens || 0,
+        },
+        segments: metadata.segments || [],
+        contextSignals: metadata.contextSignals || [],
+        grades: metadata.grades || [],
+        payoutPreview: metadata.payout || null,
+      },
+      trainingData: activeDataset.dialogues.map((d, index) => ({
+        id: `dialogue-${index}`,
         prompt: d.prompt,
         response: d.response,
-        isInstructionalUseful: d.isUseful,
-        qualityScore: d.score,
-        category: d.category,
       })),
     };
 
@@ -192,6 +223,32 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleSubmitReviewedDraft = async () => {
+    if (!activeDataset || activeDataset.status !== "Draft") return;
+    setPayoutSuccessMessage("");
+    setError("");
+    setLoading(true);
+    try {
+      const response = await fetch("/api/submit-json-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          trainingData: activeDataset.dialogues.map((d) => ({ prompt: d.prompt, response: d.response })),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Draft submission failed.");
+      setActiveDataset(result.dataset);
+      setStatusMessage(result.idempotent ? "Existing submission restored." : "Anonymous dataset submitted for review.");
+      fetchReceipt(result.dataset.id);
+    } catch (err: any) {
+      setError(err?.message || "Draft submission failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Secure export to CSV format
@@ -226,17 +283,10 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
     setPayoutSuccessMessage("");
 
     try {
-      const res = await fetch("/api/payouts", {
+      const res = await fetch("/api/payout-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          datasetId: activeDataset.id,
-          userId: user.userId,
-          amount: activeDataset.payoutAmount,
-          currency: activeDataset.currency,
-          accountNumber: user.wipayAccount,
-          phone: user.phone,
-        }),
+        body: JSON.stringify({ datasetId: activeDataset.id }),
       });
 
       const result = await res.json();
@@ -264,7 +314,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
     return true;
   }) || [];
 
-  const filteredLines = activeDataset?.originalLinesPreview.filter(l => {
+  const filteredLines = (activeDataset?.originalLinesPreview || []).filter(l => {
     if (previewFilter === 'useful') return l.isUseful;
     if (previewFilter === 'noise') return !l.isUseful;
     return true;
@@ -315,7 +365,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
               ref={fileInputRef}
               id="chat-file-picker"
               type="file"
-              accept=".txt,.zip"
+               accept=".txt,.zip,.json"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -329,7 +379,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                 {file ? file.name : "Select or drag your exported WhatsApp chat"}
               </p>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Supports raw <strong>.txt</strong> format, or clean exported <strong>.zip</strong> payloads containing threads without media attachment blocks.
+                 Supports raw <strong>.txt</strong>, clean <strong>.zip</strong>, or reviewed anonymized <strong>.json</strong> files.
               </p>
             </div>
 
@@ -523,6 +573,62 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
             </div>
           </div>
 
+          {/* Explainable context and payout review */}
+          {((activeDataset.metadata as any).segments || (activeDataset.metadata as any).grades || (activeDataset.metadata as any).contextSignals || (activeDataset.metadata as any).payout) && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="bg-[#0a1020] rounded-3xl border border-slate-800 p-5 sm:p-7 space-y-5">
+                <div>
+                  <span className="text-emerald-400 text-[10px] font-mono font-bold tracking-widest uppercase">Context review</span>
+                  <h3 className="text-lg font-display font-bold text-white mt-1">Conversation boundaries and follow-ups</h3>
+                  <p className="text-xs text-slate-400 mt-1">Later messages are linked as context so a correction or topic change can change the interpretation of an earlier turn.</p>
+                </div>
+                <div className="space-y-3">
+                  {(((activeDataset.metadata as any).segments || []) as any[]).map((segment) => (
+                    <div key={segment.id} className="rounded-xl border border-slate-800 bg-[#050810] p-3.5 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-200">{segment.id} · {segment.topicLabel}</span>
+                        <span className="text-[10px] font-mono text-amber-300">Boundary confidence {Math.round((segment.boundaryConfidence || 0) * 100)}%</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(segment.boundaryReasons || []).map((reason: string) => <span key={reason} className="text-[10px] px-2 py-1 rounded-md bg-slate-800 text-slate-400">{reason}</span>)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  {(((activeDataset.metadata as any).contextSignals || []) as any[]).map((signal) => (
+                    <div key={`${signal.fromMessage}-${signal.toMessage}-${signal.kind}`} className="flex flex-wrap items-center gap-2 text-xs rounded-lg border border-amber-900/40 bg-amber-950/20 p-3">
+                      <span className="font-mono font-bold text-amber-300 uppercase">{signal.kind}</span>
+                      <span className="text-slate-400">message {signal.fromMessage} → {signal.toMessage}</span>
+                      <span className="text-[10px] text-slate-500">{Math.round(signal.confidence * 100)}% confidence</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-[#0a1020] rounded-3xl border border-slate-800 p-5 sm:p-7 space-y-5">
+                <div>
+                  <span className="text-emerald-400 text-[10px] font-mono font-bold tracking-widest uppercase">Explainable grading</span>
+                  <h3 className="text-lg font-display font-bold text-white mt-1">Score dimensions and payout tiers</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(((activeDataset.metadata as any).grades || []) as any[]).flatMap((item) => Object.entries(item.grade?.dimensions || {}).map(([name, dimension]: [string, any]) => ({ name, dimension, segment: item.segment?.id }))).map((item) => (
+                    <div key={`${item.segment}-${item.name}`} className="rounded-xl border border-slate-800 bg-[#050810] p-3">
+                      <div className="flex justify-between gap-2 text-[10px] uppercase font-mono text-slate-500"><span>{item.name}</span><span className="text-emerald-300">{item.dimension.score}/100</span></div>
+                      <div className="h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${item.dimension.score}%` }} /></div>
+                      <div className="text-[10px] text-slate-500 mt-2">Confidence {Math.round(item.dimension.confidence * 100)}% · evidence {item.dimension.evidence?.join(", ") || "none"}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  {(((activeDataset.metadata as any).payout?.breakdown || []) as any[]).map((tier) => (
+                    <div key={tier.tier} className="flex flex-wrap justify-between gap-2 text-xs border-b border-slate-800 pb-2"><span className="text-slate-400 capitalize">{tier.tier} · {tier.units} unit(s)</span><strong className="text-emerald-300">{tier.amount} {activeDataset.currency}</strong></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Secure Live Preview Segment */}
           <div className="bg-[#0a1020] rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
             {/* Tab header */}
@@ -537,6 +643,17 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                 </div>
                 
                 <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  {activeDataset.status === "Draft" && (
+                    <button
+                      id="btn-submit-reviewed-json"
+                      onClick={handleSubmitReviewedDraft}
+                      disabled={loading}
+                      className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 select-none cursor-pointer"
+                    >
+                      <FileCheck className="w-3.5 h-3.5" />
+                      <span>Submit Anonymous Dataset</span>
+                    </button>
+                  )}
                   <button
                     id="btn-download-json"
                     onClick={handleDownloadJSON}

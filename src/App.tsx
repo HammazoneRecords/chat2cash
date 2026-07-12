@@ -9,30 +9,9 @@ import RegistrationForm from "./components/RegistrationForm";
 import LoginForm from "./components/LoginForm";
 import FileProcessor from "./components/FileProcessor";
 import ReconciliationLedger from "./components/ReconciliationLedger";
-import AdminLogin from "./components/AdminLogin";
-import AdminDashboard from "./components/AdminDashboard";
 import DynamicBackground from "./components/DynamicBackground";
 import { UserProfile, ProcessedDataset } from "./types";
 import { authClient } from "../lib/auth-client";
-
-// Route: /admin → AdminLogin, /admin-dashboard → AdminDashboard (admin only)
-const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
-if (pathname === "/admin") {
-  const container = document.getElementById("root");
-  if (container) {
-    import("react-dom/client").then(({ createRoot }) => {
-      createRoot(container).render(React.createElement(AdminLogin));
-    });
-  }
-}
-if (pathname === "/admin-dashboard") {
-  const container = document.getElementById("root");
-  if (container) {
-    import("react-dom/client").then(({ createRoot }) => {
-      createRoot(container).render(React.createElement(AdminDashboard));
-    });
-  }
-}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'anonymize' | 'ledger'>('home');
@@ -84,18 +63,18 @@ export default function App() {
       
       {/* Top Navigation Bar with modern glassmorphism */}
       <nav className="sticky top-0 z-40 relative bg-[#080d1a]/90 backdrop-blur-md border-b border-[#1e293b] px-4 py-4" id="navigation-bar">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('home')}>
             <img src="/chat2cashlogo.png" alt="Chat2Cash" className="w-8 h-8 rounded-lg object-contain" />
             <span className="font-display font-extrabold text-md tracking-tight text-white">Chat2Cash</span>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2 bg-[#02060d]/80 p-1 rounded-xl border border-[#1e293b]">
+          <div className="order-3 flex w-full items-center justify-center gap-1 overflow-x-auto bg-[#02060d]/80 p-1 rounded-xl border border-[#1e293b] sm:order-none sm:w-auto sm:justify-start sm:gap-2">
             <button
               id="nav-tab-home"
               onClick={() => setActiveTab('home')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'home' 
                   ? "bg-[#1e293b] text-white shadow-sm" 
                   : "text-slate-400 hover:text-white"
@@ -108,7 +87,7 @@ export default function App() {
               onClick={() => {
                 setActiveTab('anonymize');
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'anonymize' 
                   ? "bg-[#1e293b] text-white shadow-sm" 
                   : "text-slate-400 hover:text-white"
@@ -119,7 +98,7 @@ export default function App() {
             <button
               id="nav-tab-ledger"
               onClick={() => setActiveTab('ledger')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all relative ${
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all relative ${
                 activeTab === 'ledger' 
                   ? "bg-[#1e293b] text-white shadow-sm" 
                   : "text-slate-400 hover:text-white"
@@ -129,7 +108,7 @@ export default function App() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             {userProfile ? (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -159,7 +138,7 @@ export default function App() {
                 <button
                   id="btn-nav-login"
                   onClick={() => { setAuthMode('signin'); setActiveTab('anonymize'); }}
-                  className="px-4 py-2 border border-slate-700 bg-[#0d1527] hover:bg-slate-800 rounded-xl text-xs font-bold text-slate-200 transition-all flex items-center gap-1.5"
+                  className="shrink-0 px-3 py-2 sm:px-4 border border-slate-700 bg-[#0d1527] hover:bg-slate-800 rounded-xl text-xs font-bold text-slate-200 transition-all flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <LogIn className="w-3.5 h-3.5 text-slate-400" />
                   <span>Sign In</span>
@@ -167,7 +146,7 @@ export default function App() {
                 <button
                   id="btn-nav-register"
                   onClick={() => { setAuthMode('signup'); setActiveTab('anonymize'); }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white transition-all"
+                  className="shrink-0 px-3 py-2 sm:px-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white transition-all whitespace-nowrap"
                 >
                   Get Started
                 </button>
@@ -244,4 +223,3 @@ export default function App() {
     </div>
   );
 }
-

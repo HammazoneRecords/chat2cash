@@ -10,6 +10,7 @@ Guides for deployment, monitoring, and troubleshooting.
 - **Domain**: `chat2cash.mindwaveja.com` (port 4001)
 - **Container**: `mw-chat2cash` | **Service**: `chat2cash`
 - **Stack**: Vite + React + TS (frontend) · Express + TSX (backend) · Better Auth + SQLite
+- **Package manager**: pnpm `10.33.0` via Corepack (`packageManager` is pinned in `package.json`)
 - **AI evaluation cascade**: Oreluwa/RunPod → DeepSeek → local heuristics
 - **Data path**: `/opt/mw/chat2cash-data/chat2cash.db` (bind-mounted volume)
 
@@ -34,11 +35,13 @@ curl http://localhost:4001/api/health
 
 ```bash
 cd active_apps/chat2cash
-pnpm install
-pnpm dev          # → http://localhost:4001
-pnpm lint         # TypeScript check
-pnpm run build    # Production build
+corepack pnpm install
+corepack pnpm dev          # → http://localhost:4001
+corepack pnpm run lint     # TypeScript check
+corepack pnpm run build    # Production build
 ```
+
+Use the pinned pnpm version only. This app currently standardizes on `pnpm@10.33.0`; using pnpm 11 against the existing install can trigger a non-interactive `node_modules` purge prompt.
 
 ---
 

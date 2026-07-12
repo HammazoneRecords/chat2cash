@@ -1,8 +1,17 @@
 # Chat2Cash Launch Readiness Report
 **Version:** 2.0  
 **Date:** 2026-06-23  
+**Last verified:** 2026-07-06  
 **Prepared by:** MindWave JA  
 **Status:** ✅ READY FOR USERS — Pending Oreluwa RunPod activation
+
+---
+
+## Recent Verification
+
+- Fresh-user onboarding re-tested on 2026-07-06 against a production build with isolated data storage.
+- Verified flow: registration, session creation, sign-out/sign-in, and first WhatsApp dataset creation.
+- Local caveat: Better Auth rejects signup when `BETTER_AUTH_URL` / `APP_URL` do not match the actual serving origin. This affected localhost testing only; it is a config hygiene issue, not a product-flow failure.
 
 ---
 
@@ -16,7 +25,7 @@
 | GitHub | HammazoneRecords/chat2cash |
 | Branch | `main` |
 | Stack | Vite + React + TS · Express · Better Auth · SQLite |
-| Package manager | pnpm (lockfile: `pnpm-lock.yaml`) |
+| Package manager | pnpm `10.33.0` via Corepack (lockfile: `pnpm-lock.yaml`) |
 | Analytics | Umami at `stats.mindwaveja.com` (site ID: `1893e7dc-63b3-4ebc-b0db-fa09b252efde`) |
 
 ---

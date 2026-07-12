@@ -41,17 +41,25 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
       .catch(() => {});
   }, []);
 
-  const handleVoiceSubscribe = (e: React.FormEvent) => {
+  const handleVoiceSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (voiceEmail.trim()) {
-      const key = "voice_notes_subscribers";
-      const list = JSON.parse(localStorage.getItem(key) || "[]");
-      if (!list.includes(voiceEmail.trim())) {
-        list.push(voiceEmail.trim());
-        localStorage.setItem(key, JSON.stringify(list));
-      }
+    if (!voiceEmail.trim()) return;
+    setVoiceError("");
+    setVoiceSubmitting(true);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Voice waitlist subscriber", email: voiceEmail.trim(), country: "JM" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not join the waitlist.");
       setSubscribed(true);
       setVoiceEmail("");
+    } catch (error: any) {
+      setVoiceError(error?.message || "Network error. Please try again.");
+    } finally {
+      setVoiceSubmitting(false);
     }
   };
 
@@ -506,6 +514,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
             <div className="pt-2 z-10">
               {!subscribed ? (
                 <form onSubmit={handleVoiceSubscribe} className="space-y-2">
+                  {voiceError && <div className="text-[10px] text-red-300" role="alert">{voiceError}</div>}
                   <div className="relative">
                     <Mail className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-500" />
                     <input
@@ -519,10 +528,11 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                   </div>
                   <button
                     type="submit"
-                    className="w-full py-1.5 px-3 bg-emerald-500 text-slate-950 rounded-lg text-xs font-bold font-mono tracking-wider hover:bg-emerald-400 transition-colors uppercase flex items-center justify-center gap-1 cursor-pointer"
+                    disabled={voiceSubmitting}
+                    className="w-full py-1.5 px-3 bg-emerald-500 text-slate-950 rounded-lg text-xs font-bold font-mono tracking-wider hover:bg-emerald-400 disabled:opacity-60 transition-colors uppercase flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Bell className="w-3.5 h-3.5" />
-                    Notify Me
+                    {voiceSubmitting ? "Saving..." : "Notify Me"}
                   </button>
                 </form>
               ) : (

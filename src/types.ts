@@ -28,19 +28,33 @@ export interface DialoguePair {
   prompt: string;     // Context / Message prior
   response: string;   // Cleaned, safe response
   isUseful: boolean;
-  score: number;      // Usefulness score
+  score: number | null;      // Usefulness score
   category: string;   // Q&A, Smalltalk, Task-oriented, Informational, Noise
+  explanation?: string;
 }
 
 export interface DatasetMetadata {
   anonymizationRules: string[];
   evaluationSummary: string;
-  suitabilityScore: number; // 0-100 score of quality for fine-tuning
+  suitabilityScore: number | null; // 0-100 score of quality for fine-tuning
   payoutRatePerUsefulLine: number; // e.g. $0.05 TTD per helpful line
   totalLinesAnalyzed: number;
   totalUsefulLines: number;
   uniqueUserTokens: number;
   estimatedTokens: number;
+  jsonVersion?: string;
+  evaluatorVersion?: string;
+  segmentationVersion?: string;
+  hashVersion?: string;
+  contentHash?: string;
+  warnings?: string[];
+  segments?: any[];
+  grades?: any[];
+  contextSignals?: any[];
+  payout?: any;
+  payoutPendingContextReview?: boolean;
+  partialDuplicate?: boolean;
+  newPairsOnly?: number;
 }
 
 export interface TransactionDetails {
@@ -62,7 +76,7 @@ export interface ProcessedDataset {
   originalFileName: string;
   purifiedFileName: string; // whatsapp_dataset_userId_timestamp.[json/csv]
   timestamp: string;
-  status: 'Pending Review' | 'Approved' | 'Disbursed' | 'Declined';
+  status: 'Draft' | 'Pending Review' | 'Approved' | 'Disbursed' | 'Declined';
   payoutAmount: number; // Estimated amount based on usefulness
   currency: string; // TTD or JMD or BBD or USD
   metadata: DatasetMetadata;

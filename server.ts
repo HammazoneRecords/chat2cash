@@ -6,8 +6,11 @@ import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
+import { createStaffInvite, listStaffUsers, updateStaffRole, setStaffDisabled, isUserDisabled, consumeStaffInvite, revokeUserSessions } from "./lib/auth";
 import { database } from "./db";
-import { hashContent, hashPairs } from "./lib/contentHash";
+import { hashPair } from "./lib/contentHash";
+import { validateCanonicalJson, hashCanonicalDialogues } from "./lib/canonicalJson";
+import { segmentConversation, gradeSegment, detectContextSignals, calculateTieredPayout, SEGMENTATION_VERSION, EVALUATOR_VERSION } from "./lib/contextGrading";
 
 dotenv.config();
 
@@ -37,6 +40,7 @@ const AI_PROVIDER = RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID
     : "local";
 
 console.log(`[AI] Evaluation provider: ${AI_PROVIDER.toUpperCase()}`);
+const MAX_AI_PROMPT_CHARS = 24000;
 
 // Cascading AI evaluator: Oreluwa (RunPod) → DeepSeek → local heuristics
 async function runAIEvaluation(prompt: string): Promise<any | null> {
@@ -140,6 +144,7 @@ async function requireSession(req: any, res: express.Response, next: express.Nex
   if (!session) {
     return res.status(401).json({ error: "Authentication required. Please sign in." });
   }
+  if (isUserDisabled(session.user.id)) return res.status(403).json({ error: "Account disabled." });
   req.session = session;
   next();
 }
@@ -149,11 +154,27 @@ async function requireAdmin(req: any, res: express.Response, next: express.NextF
   if (!session) {
     return res.status(401).json({ error: "Authentication required." });
   }
-  if (session.user.role !== "admin") {
+  if (isUserDisabled(session.user.id)) {
+    return res.status(403).json({ error: "Account disabled." });
+  }
+  if (!["admin", "owner"].includes(session.user.role || "")) {
     return res.status(403).json({ error: "Admin access required." });
   }
   req.session = session;
   next();
+}
+
+function requireRole(...roles: string[]) {
+  return async (req: any, res: express.Response, next: express.NextFunction) => {
+    const session = await auth.api.getSession({ headers: req.headers as any });
+    if (!session) return res.status(401).json({ error: "Authentication required." });
+    if (isUserDisabled(session.user.id)) return res.status(403).json({ error: "Account disabled." });
+    if (!roles.includes(session.user.role || "contributor")) {
+      return res.status(403).json({ error: "Insufficient permissions." });
+    }
+    req.session = session;
+    next();
+  };
 }
 
 // --- API Endpoints ---
@@ -223,6 +244,8 @@ app.post("/api/profile/update", requireSession, (req: any, res) => {
 
 // Legacy registration endpoint — kept for backward compat, Better Auth flow is preferred
 app.post("/api/profile", (req, res) => {
+  return res.status(410).json({ error: "Legacy profile creation is disabled. Please use the authenticated registration flow." });
+
   const { email, phone, fullName, wipayAccount, wipayLink, country, town, age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto } = req.body;
   
   if (!email || !phone || !fullName || !age || !gender) {
@@ -278,9 +301,10 @@ app.post("/api/profile", (req, res) => {
 // Fetch detailed database statistics & transaction history for reconciliation
 app.get("/api/reconciliation", (req, res) => {
   res.json({
-    datasets: database.getAllDatasets(),
-    profiles: database.getAllProfiles(),
-    transactions: database.getAllTransactions(),
+    stats: database.getStats(),
+    datasets: [],
+    profiles: [],
+    transactions: [],
   });
 });
 
@@ -307,6 +331,168 @@ app.post("/api/waitlist", (req, res) => {
       return res.status(409).json({ error: "This email is already on the waitlist." });
     }
     res.status(500).json({ error: err.message || "Failed to join waitlist." });
+  }
+});
+
+// Reviewed JSON upload — validates and returns a non-persisted draft.
+app.post("/api/upload-json", requireSession, (req: any, res) => {
+  try {
+    const profile = database.getProfile(req.session.user.id);
+    if (!profile) return res.status(404).json({ error: "Profile not found." });
+
+    const { dialogues, warnings } = validateCanonicalJson(req.body);
+    const canonicalHash = hashCanonicalDialogues(dialogues);
+    const normalizedMessages = dialogues.flatMap((dialogue, index) => [
+      { index: index * 2, speaker: "Speaker A", text: dialogue.prompt },
+      { index: index * 2 + 1, speaker: "Speaker B", text: dialogue.response },
+    ]);
+    const segments = segmentConversation(normalizedMessages);
+    const grades = segments.map(segment => ({ segment, grade: gradeSegment(normalizedMessages, segment) }));
+    const contextSignals = detectContextSignals(normalizedMessages);
+    const tierInputs = grades.map(({ grade }) => ({
+      tier: grade.dimensions.instructional.score >= 70 ? "instructional" as const
+        : grade.dimensions.followupValue.score >= 60 ? "contextual" as const
+          : grade.dimensions.languageVariation.score >= 55 ? "language" as const
+            : "conversational" as const,
+      units: 1,
+    }));
+    const payout = calculateTieredPayout(tierInputs, profile.demographicOptIn ? 2 : 1);
+    const draft = {
+      id: `DRAFT-${canonicalHash.slice(0, 16)}`,
+      userId: req.session.user.id,
+      userEmail: "",
+      userPhone: "",
+      originalFileName: "reviewed-upload.json",
+      purifiedFileName: `chat2cash_${req.session.user.id}_${canonicalHash.slice(0, 12)}.json`,
+      timestamp: new Date().toISOString(),
+      status: "Draft",
+      payoutAmount: 0,
+      currency: profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD",
+      contentHash: canonicalHash,
+      metadata: {
+        jsonVersion: "c2c-json-v1",
+        evaluatorVersion: EVALUATOR_VERSION,
+        segmentationVersion: SEGMENTATION_VERSION,
+        anonymizationRules: ["Validated canonical anonymized JSON", "Client scores and identity fields ignored"],
+        warnings,
+        totalLinesAnalyzed: dialogues.length * 2,
+        totalUsefulLines: 0,
+        suitabilityScore: null,
+        segments,
+        grades,
+        contextSignals,
+        payout,
+      },
+      dialogues: dialogues.map((d, index) => ({
+        id: `draft-${index}`,
+        ...d,
+        isUseful: false,
+        score: null,
+        category: "Pending Context Review",
+      })),
+      originalLinesPreview: [],
+    };
+    res.json({ success: true, draft });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Invalid canonical JSON." });
+  }
+});
+
+// Explicitly submit a reviewed JSON draft. Scores and identity are recomputed server-side.
+app.post("/api/submit-json-draft", requireSession, (req: any, res) => {
+  try {
+    const userId = req.session.user.id;
+    const profile = database.getProfile(userId);
+    if (!profile) return res.status(404).json({ error: "Profile not found." });
+
+    const { dialogues } = validateCanonicalJson(req.body);
+    const contentHash = hashCanonicalDialogues(dialogues);
+    const existing = database.getDatasetByContentHash(contentHash);
+    if (existing?.userId === userId) {
+      return res.json({ success: true, idempotent: true, dataset: existing });
+    }
+    if (existing) {
+      const { strikes, flagged } = database.addStrike(userId);
+      database.addAuditLog("duplicate_detected", null, userId, `Reviewed JSON full duplicate — strike ${strikes}/4${flagged ? " — ACCOUNT FLAGGED" : ""}`);
+      return res.status(409).json({
+        error: "duplicate",
+        message: "This anonymized dataset was already submitted by another account.",
+        strikes,
+        accountFlagged: flagged,
+      });
+    }
+
+    const jsonPairHashes = dialogues.map((dialogue) =>
+      hashPair("canonical-pair", `${dialogue.prompt}\n${dialogue.response}`),
+    );
+    const existingPairHashes = database.getExistingPairHashes(jsonPairHashes);
+    if (existingPairHashes.length === jsonPairHashes.length && jsonPairHashes.length > 0) {
+      const { strikes, flagged } = database.addStrike(userId);
+      database.addAuditLog("duplicate_detected", null, userId, `Reviewed JSON all-pairs duplicate — strike ${strikes}/4${flagged ? " — ACCOUNT FLAGGED" : ""}`);
+      return res.status(409).json({
+        error: "duplicate",
+        message: "All submitted dialogue pairs have already been received.",
+        strikes,
+        accountFlagged: flagged,
+      });
+    }
+    const existingPairSet = new Set(existingPairHashes);
+    const unseenIndices = jsonPairHashes
+      .map((pairHash, index) => existingPairSet.has(pairHash) ? -1 : index)
+      .filter(index => index >= 0);
+    const submittedDialogues = unseenIndices.map(index => dialogues[index]);
+    const submittedPairHashes = unseenIndices.map(index => jsonPairHashes[index]);
+    const duplicateStatus = existingPairHashes.length > 0 ? "partial" : "clean";
+    const datasetId = `DS-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+    const dataset: any = {
+      id: datasetId,
+      userId,
+      userEmail: profile.email,
+      userPhone: profile.phone,
+      originalFileName: "reviewed-upload.json",
+      purifiedFileName: `whatsapp_dataset_${userId}_${Date.now()}.json`,
+      timestamp,
+      status: "Pending Review",
+      payoutAmount: 0,
+      currency: profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD",
+      metadata: {
+        jsonVersion: "c2c-json-v1",
+        evaluatorVersion: "pending-context-grader",
+        segmentationVersion: "pending-context-segmenter",
+        anonymizationRules: ["Canonical anonymized JSON validated server-side"],
+        evaluationSummary: "Queued for context-aware moderation review.",
+        suitabilityScore: null,
+        payoutRatePerUsefulLine: 0,
+        totalLinesAnalyzed: submittedDialogues.length * 2,
+        totalUsefulLines: 0,
+        partialDuplicate: duplicateStatus === "partial",
+        newPairsOnly: submittedDialogues.length,
+        uniqueUserTokens: 0,
+        estimatedTokens: 0,
+      },
+      dialogues: submittedDialogues.map((d, index) => ({
+        id: `dialogue-${index}`,
+        ...d,
+        isUseful: false,
+        score: 0,
+        category: "Pending Context Review",
+      })),
+    };
+
+    database.createDataset(dataset);
+    database.insertPairHashes(submittedPairHashes, datasetId, userId);
+    database.updateDatasetHash(datasetId, contentHash, duplicateStatus);
+    return res.status(201).json({
+      success: true,
+      dataset: database.getDataset(datasetId),
+      ...(duplicateStatus === "partial" ? {
+        warning: "partial_duplicate",
+        message: "Some dialogue pairs were already submitted. This dataset contains only new pairs.",
+      } : {}),
+    });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || "Draft submission failed." });
   }
 });
 
@@ -491,7 +677,7 @@ function evaluateDialogueLocally(d: { prompt: string; response: string }) {
 }
 
 // Main Endpoint: Anonymize WhatsApp Chats & Run AI evaluation for usefulness
-app.post("/api/process-chat", requireSession, async (req, res) => {
+app.post("/api/process-chat", requireSession, async (req: any, res) => {
   try {
     const { chatText, fileName, userId } = req.body;
 
@@ -499,7 +685,11 @@ app.post("/api/process-chat", requireSession, async (req, res) => {
       return res.status(400).json({ error: "Missing required fields: chatText and userId." });
     }
 
-    const profile = database.getProfile(userId);
+    if (userId !== req.session.user.id) {
+      return res.status(403).json({ error: "Submission ownership does not match the signed-in account." });
+    }
+
+    const profile = database.getProfile(req.session.user.id);
     if (!profile) {
       return res.status(404).json({ error: "No user profile found. Please register first for proper record-keeping." });
     }
@@ -567,8 +757,8 @@ app.post("/api/process-chat", requireSession, async (req, res) => {
         const samplingCount = Math.min(ambiguousIndices.length, 15);
         const ambiguousSample = ambiguousIndices.slice(0, samplingCount).map((idx) => ({
           idx,
-          prompt: dialogues[idx].prompt,
-          response: dialogues[idx].response,
+          prompt: dialogues[idx].prompt.slice(0, 1200),
+          response: dialogues[idx].response.slice(0, 1200),
         }));
 
         const aiPrompt = `You are an AI Trainer Audit Model evaluating conversational dataset quality for fine-tuning a LLM chatbot.
@@ -586,7 +776,8 @@ ${JSON.stringify(ambiguousSample, null, 2)}
 Respond strictly in valid JSON:
 {"suitabilityScore": number, "evaluationSummary": "string", "scoredIndices": [{"idx": number, "isUseful": boolean, "score": number, "category": "string", "explanation": "string"}]}`;
 
-        const result = await runAIEvaluation(aiPrompt);
+        const boundedPrompt = aiPrompt.slice(0, MAX_AI_PROMPT_CHARS);
+        const result = await runAIEvaluation(boundedPrompt);
 
         if (result) {
           suitabilityScore = result.suitabilityScore ?? 75;
@@ -666,6 +857,28 @@ Respond strictly in valid JSON:
     
     const uniqueTokens = Math.round(totalLinesAnalyzed * 4.8);
     const estimatedTokens = Math.round(totalLinesAnalyzed * 15.2);
+    const canonicalDialogues = dialogues.map((d: any) => ({ prompt: d.prompt || "", response: d.response || "" }));
+    const contentHash = hashCanonicalDialogues(canonicalDialogues);
+    const pairHashes = canonicalDialogues.map((dialogue: any) =>
+      hashPair("canonical-pair", `${dialogue.prompt}\n${dialogue.response}`),
+    );
+    const normalizedMessages = rawAnonymizedTurns.map((turn, index) => ({
+      index,
+      speaker: turn.speaker,
+      text: turn.text,
+      gapBucket: "short" as const,
+    }));
+    const segments = segmentConversation(normalizedMessages);
+    const grades = segments.map(segment => ({ segment, grade: gradeSegment(normalizedMessages, segment) }));
+    const contextSignals = detectContextSignals(normalizedMessages);
+    const tierInputs = grades.map(({ grade }) => ({
+      tier: grade.dimensions.instructional.score >= 70 ? "instructional" as const
+        : grade.dimensions.followupValue.score >= 60 ? "contextual" as const
+          : grade.dimensions.languageVariation.score >= 55 ? "language" as const
+            : "conversational" as const,
+      units: 1,
+    }));
+    const payout = calculateTieredPayout(tierInputs, (profile as any).demographicOptIn ? 2 : 1);
     
     const datasetId = `DS-${Date.now()}`;
     const timestampStr = new Date().toISOString();
@@ -688,7 +901,14 @@ Respond strictly in valid JSON:
       status: "Pending Review", // Requires 7-14 days verification as requested
       payoutAmount,
       currency,
+      contentHash,
+      hashVersion: "v1",
       metadata: {
+        jsonVersion: "c2c-json-v1",
+        evaluatorVersion: EVALUATOR_VERSION,
+        segmentationVersion: SEGMENTATION_VERSION,
+        contentHash,
+        hashVersion: "v1",
         anonymizationRules: [
           "Removed WhatsApp timestamp and dates",
           "Anonymized participant contact names and numbers using Speaker tags",
@@ -701,10 +921,34 @@ Respond strictly in valid JSON:
         totalUsefulLines,
         uniqueUserTokens: uniqueTokens,
         estimatedTokens,
+        segments,
+        grades,
+        contextSignals,
+        payout,
       },
       dialogues,
       originalLinesPreview: originalLinesPreview.slice(0, 300), // Cap preview list for rendering speed
     };
+
+    // Draft mode is intentionally non-persistent: no dataset, payout, strike, or receipt is created.
+    if (req.body.draftOnly === true) {
+      return res.json({
+        success: true,
+        draft: true,
+        dataset: {
+          ...dataset,
+          status: "Draft",
+          userEmail: "",
+          userPhone: "",
+          payoutAmount: 0,
+      metadata: {
+            ...dataset.metadata,
+            payoutPendingContextReview: true,
+          },
+          originalLinesPreview: originalLinesPreview.slice(0, 300),
+        },
+      });
+    }
 
     // ── Duplicate detection ──────────────────────────────────────────────────
     // Block flagged accounts
@@ -712,12 +956,17 @@ Respond strictly in valid JSON:
       return res.status(403).json({ error: "account_flagged", message: "Your account has been flagged for suspicious activity. Contact support." });
     }
 
-    const dialoguePairs = dialogues.map((d: any) => ({ speaker: d.speaker || "", text: d.text || d.response || "" }));
-    const contentHash = hashContent(dialoguePairs);
-    const pairHashes = hashPairs(dialoguePairs);
-
     // Full content duplicate → strike
     if (database.contentHashExists(contentHash)) {
+      const existingDataset = database.getDatasetByContentHash(contentHash);
+      if (existingDataset?.userId === req.session.user.id) {
+        return res.json({
+          success: true,
+          idempotent: true,
+          dataset: existingDataset,
+          message: "This anonymized dataset was already submitted. Returning the existing record.",
+        });
+      }
       const { strikes, flagged } = database.addStrike(userId);
       database.addAuditLog("duplicate_detected", null, userId, `Full duplicate — strike ${strikes}/4${flagged ? " — ACCOUNT FLAGGED" : ""}`);
       return res.status(409).json({
@@ -766,6 +1015,7 @@ Respond strictly in valid JSON:
     dataset.contentHash = contentHash;
     // ── End duplicate detection ──────────────────────────────────────────────
 
+    dataset.originalLinesPreview = [];
     database.createDataset(dataset);
     if (filteredPairHashes.length > 0) {
       database.insertPairHashes(filteredPairHashes, dataset.id, userId);
@@ -783,13 +1033,40 @@ Respond strictly in valid JSON:
   }
 });
 
+// Contributor requests a payout for their own submitted dataset.
+app.post("/api/payout-requests", requireSession, (req: any, res) => {
+  const { datasetId } = req.body;
+  const userId = req.session.user.id;
+  const dataset = database.getDataset(datasetId);
+  if (!dataset || dataset.userId !== userId) {
+    return res.status(404).json({ error: "Dataset not found." });
+  }
+  if (dataset.status !== "Pending Review") {
+    return res.status(409).json({ error: "This dataset is not awaiting payout review." });
+  }
+
+  const profile = database.getProfile(userId);
+  if (!profile) return res.status(404).json({ error: "User profile not found." });
+  const existing = database.getTransactionsByDataset(datasetId);
+  if (existing.length) return res.json({ success: true, transaction: existing[0] });
+
+  const txId = `WIPAY-TX-${Date.now()}`;
+  const transaction: any = {
+    id: txId, userId, datasetId, amount: dataset.payoutAmount,
+    currency: dataset.currency || "JMD", gateway: "WiPay", status: "PENDING",
+    timestamp: new Date().toISOString(), referenceHash: txId,
+  };
+  database.createTransaction(transaction);
+  res.json({ success: true, transaction });
+});
+
 // Returns the contributor's WiPay payout link for admin to manually disburse
 // No merchant API key needed — WiPay provides a payout link per contributor
 app.post("/api/payouts", requireAdmin, (req, res) => {
-  const { datasetId, userId, amount, currency } = req.body;
+  const { datasetId } = req.body;
 
-  if (!datasetId || !userId || !amount) {
-    return res.status(400).json({ error: "Missing datasetId, userId, or amount." });
+  if (!datasetId) {
+    return res.status(400).json({ error: "Missing datasetId." });
   }
 
   const dataset = database.getDataset(datasetId);
@@ -797,18 +1074,26 @@ app.post("/api/payouts", requireAdmin, (req, res) => {
     return res.status(404).json({ error: "Dataset not found." });
   }
 
+  if (dataset.status !== "Approved") {
+    return res.status(409).json({ error: "Dataset must be approved before payout is queued." });
+  }
+
+  const userId = dataset.userId;
   const profile = database.getProfile(userId);
   if (!profile) {
     return res.status(404).json({ error: "User profile not found." });
   }
+
+  const existing = database.getTransactionsByDataset(datasetId);
+  if (existing.length) return res.json({ success: true, transaction: existing[0], idempotent: true });
 
   const txId = `WIPAY-TX-${Date.now()}`;
   const transaction: any = {
     id: txId,
     userId,
     datasetId,
-    amount: parseFloat(amount),
-    currency: currency || "JMD",
+    amount: dataset.payoutAmount,
+    currency: dataset.currency || "JMD",
     gateway: "WiPay",
     status: "PENDING",
     timestamp: new Date().toISOString(),
@@ -826,14 +1111,22 @@ app.post("/api/payouts", requireAdmin, (req, res) => {
   });
 });
 
-app.post("/api/admin/payout-approve", requireAdmin, (req, res) => {
+app.post("/api/admin/payout-approve", requireAdmin, (req: any, res) => {
   const { datasetId } = req.body;
   const dataset = database.getDataset(datasetId);
   if (!dataset) {
     return res.status(404).json({ error: "Dataset not found." });
   }
 
+  const transactions = database.getTransactionsByDataset(datasetId);
+  if (!transactions.length) return res.status(409).json({ error: "Payout must be queued before disbursement." });
+  if (dataset.status === "Disbursed" || transactions[0].status === "DISBURSED") {
+    return res.json({ success: true, idempotent: true, dataset });
+  }
+
+  database.updateTransactionStatus(transactions[0].id, "DISBURSED");
   database.updateDataset(datasetId, { status: "Disbursed" });
+  database.addAuditLog("payout_disbursed", req.session?.user?.id || null, datasetId);
 
   res.json({
     success: true,
@@ -966,6 +1259,115 @@ app.post("/api/admin/auth", async (req, res) => {
 // ── Admin: Dataset list ────────────────────────────────────────────────────
 app.get("/api/admin/datasets", requireAdmin, (_req, res) => {
   res.json(database.getAllDatasetsAdmin());
+});
+
+app.get("/api/admin/staff", requireRole("admin", "owner"), (_req, res) => {
+  res.json(listStaffUsers());
+});
+
+app.post("/api/admin/staff/invite", requireRole("admin", "owner"), (req: any, res) => {
+  const { email, role } = req.body;
+  if (!email || !role) return res.status(400).json({ error: "email and role are required." });
+  try {
+    const invite = createStaffInvite(email, role, req.session.user.id);
+    database.addAuditLog("staff_invited", req.session.user.id, invite.email, JSON.stringify({ role: invite.role }));
+    res.status(201).json({ success: true, invite });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Staff invite failed." });
+  }
+});
+
+app.post("/api/staff/invite/accept", async (req, res) => {
+  const { token, name, password } = req.body;
+  if (!token || !name?.trim() || !password) return res.status(400).json({ error: "token, name, and password are required." });
+  try {
+    const invite = consumeStaffInvite(token);
+    const signUp = await auth.api.signUpEmail({
+      body: { email: invite.email, name: name.trim(), password },
+      headers: req.headers as any,
+      asResponse: true,
+    });
+    if (!signUp.ok) return res.status(signUp.status).json({ error: "Staff account creation failed." });
+    const user = (await signUp.json()) as any;
+    const userId = user?.user?.id;
+    if (userId) updateStaffRole(userId, invite.role);
+    const cookie = signUp.headers.get("set-cookie");
+    if (cookie) res.setHeader("Set-Cookie", cookie);
+    res.status(201).json({ success: true, role: invite.role });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Invite acceptance failed." });
+  }
+});
+
+app.post("/api/admin/staff/role", requireRole("owner"), (req: any, res) => {
+  try {
+    updateStaffRole(req.body.userId, req.body.role);
+    database.addAuditLog("staff_role_changed", req.session.user.id, req.body.userId, JSON.stringify({ role: req.body.role }));
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Role update failed." });
+  }
+});
+
+app.post("/api/admin/staff/disable", requireRole("admin", "owner"), (req: any, res) => {
+  try {
+    setStaffDisabled(req.body.userId, Boolean(req.body.disabled));
+    database.addAuditLog("staff_status_changed", req.session.user.id, req.body.userId, JSON.stringify({ disabled: Boolean(req.body.disabled) }));
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Staff status update failed." });
+  }
+});
+
+app.post("/api/admin/staff/revoke-sessions", requireRole("admin", "owner"), (req: any, res) => {
+  try {
+    const count = revokeUserSessions(req.body.userId);
+    database.addAuditLog("staff_sessions_revoked", req.session.user.id, req.body.userId, JSON.stringify({ count }));
+    res.json({ success: true, revoked: count });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Session revocation failed." });
+  }
+});
+
+// Moderator queue — content is already sanitized before it reaches this route.
+app.get("/api/moderation/queue", requireRole("moderator", "admin", "owner"), (_req, res) => {
+  const datasets = database.getAllDatasetsAdmin()
+    .filter((dataset: any) => ["Pending Review", "Held", "Correction Requested"].includes(dataset.status))
+    .map((dataset: any) => ({
+      ...dataset,
+      email: undefined,
+      userPhone: undefined,
+      wipayLink: undefined,
+    }));
+  res.json(datasets);
+});
+
+// Moderator/admin review decision with an auditable reason.
+app.post("/api/moderation/decision", requireRole("moderator", "admin", "owner"), (req: any, res) => {
+  const { datasetId, decision, reason } = req.body;
+  const allowed = ["approve", "reject", "hold", "correction"];
+  if (!datasetId || !allowed.includes(decision)) {
+    return res.status(400).json({ error: "datasetId and a valid moderation decision are required." });
+  }
+  const dataset = database.getDataset(datasetId);
+  if (!dataset) return res.status(404).json({ error: "Dataset not found." });
+  const before = { status: dataset.status, payoutAmount: dataset.payoutAmount, metadata: dataset.metadata };
+  const status = decision === "approve"
+    ? "Approved"
+    : decision === "reject"
+      ? "Declined"
+      : decision === "correction"
+        ? "Correction Requested"
+        : "Held";
+  database.updateDataset(datasetId, { status });
+  const updated = database.getDataset(datasetId);
+  database.addAuditLog("moderation_decision", req.session.user.id, datasetId, JSON.stringify({
+    decision,
+    reason: reason || "",
+    before,
+    after: { status: updated?.status, payoutAmount: updated?.payoutAmount, metadata: updated?.metadata },
+  }));
+  res.json({ success: true, dataset: updated });
 });
 
 // ── Admin: Dataset export ──────────────────────────────────────────────────
