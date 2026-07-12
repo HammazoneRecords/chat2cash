@@ -32,7 +32,7 @@ export default function HelpFaq() {
     {
       id: "pay-1",
       question: "How exactly are my dialogue turns priced and calculated?",
-      answer: "Your earnings are determined by two primary metrics: (1) Useful dialogue turns: each completed prompt-response sequence is evaluated for context, clarity, and training value. Standard useful turns earn $0.50 to $4.00 JMD depending on quality. (2) Optional demographic multiplier: verified opt-in demographic profiles can apply a 2x multiplier, making the maximum $8.00 JMD per accepted useful turn.",
+      answer: "MindWave buys accepted anonymized chat pairs by value tier. Low-value but valid conversation earns JMD $2, contextual conversation earns JMD $5, Patois/code-switching language value earns JMD $8, creative or cultural insight earns JMD $12, and strong instructional/task-solving pairs earn up to JMD $15 base. Verified multiplier bonuses are capped so the displayed customer rate does not exceed JMD $20 per accepted pair.",
       category: "payout",
       icon: DollarSign,
     },
@@ -130,7 +130,7 @@ export default function HelpFaq() {
           <div className="space-y-1">
             <h4 className="text-xs font-bold font-mono text-slate-300 uppercase tracking-wide">Calculations</h4>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              $0.50 - $4.00 JMD per useful turn; up to $8.00 JMD with the optional 2x demographic multiplier.
+              $2 - $20 JMD per accepted chat pair, based on usefulness, context, and language value.
             </p>
           </div>
         </div>

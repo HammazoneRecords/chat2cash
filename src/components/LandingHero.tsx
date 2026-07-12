@@ -136,10 +136,9 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
           <div className="px-6 py-3 bg-[#070b14] border border-slate-800 rounded-2xl text-center min-w-[160px]">
             <div className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-widest mb-1">💬 Text Chats</div>
             <div className="flex items-center gap-2">
-              <div className="text-lg font-bold text-white">$0.50 – $4 JMD</div>
-              <span className="text-[9px] font-black text-emerald-300 bg-emerald-900/50 border border-emerald-700/50 px-1.5 py-0.5 rounded-full tracking-widest">×2</span>
+              <div className="text-lg font-bold text-white">$2 – $20 JMD</div>
             </div>
-            <div className="text-[10px] text-slate-500 mt-0.5">per turn · up to $8 JMD with demographic bonus</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">per accepted pair · bonus capped</div>
           </div>
           <div className="text-slate-700 text-xl hidden sm:block font-light">→</div>
           <div className="px-6 py-3 bg-emerald-950/30 border border-emerald-700/40 rounded-2xl text-center min-w-[160px] relative">
@@ -273,10 +272,9 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 pt-2">
               <div className="text-center">
                 <div className="flex items-center gap-2">
-                  <div className="text-2xl font-bold font-mono text-emerald-400">$0.50 – $4 JMD</div>
-                  <span className="text-[9px] font-black text-emerald-300 bg-emerald-900/50 border border-emerald-700/50 px-1.5 py-0.5 rounded-full tracking-widest self-center">×2</span>
+                  <div className="text-2xl font-bold font-mono text-emerald-400">$2 – $20 JMD</div>
                 </div>
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Base per useful turn</div>
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Per accepted chat pair</div>
               </div>
               <div className="hidden sm:block text-slate-700 text-2xl font-light">×</div>
               <div className="text-center">
@@ -290,7 +288,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               </div>
             </div>
             <div className="text-[11px] text-slate-500 font-mono pt-1">
-              Text rates: <span className="text-slate-400">$0.50-$4 JMD per useful turn, up to $8 JMD with the optional 2x demographic multiplier.</span><br />
+              Text rates: <span className="text-slate-400">$2-$20 JMD per accepted chat pair, based on usefulness, context, and language value.</span><br />
               Currency guide: <span className="text-slate-400">JMD 1,000 ≈ TTD 46 ≈ BBD 8.80</span> &nbsp;·&nbsp; Rates updated monthly
             </div>
           </div>
@@ -338,7 +336,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                     </div>
                   </div>
                   <div className="pt-1 border-t border-slate-800/60">
-                    <span className="text-[9px] text-slate-600 font-mono">Low density — casual Patois, short turns · still earns per turn</span>
+                    <span className="text-[9px] text-slate-600 font-mono">Low density — casual Patois, short turns · still earns when accepted</span>
                   </div>
                 </div>
               </div>

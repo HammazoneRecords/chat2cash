@@ -1,5 +1,6 @@
 export const SEGMENTATION_VERSION = "c2c-segmentation-v1";
 export const EVALUATOR_VERSION = "c2c-evaluator-v1";
+export const PAYOUT_VERSION = "c2c-payout-v2-mindwave-buyer";
 
 export type NormalizedMessage = {
   index: number;
@@ -149,24 +150,29 @@ export function detectContextSignals(messages: NormalizedMessage[]): ContextSign
 export type PayoutTier = "instructional" | "contextual" | "language" | "creative" | "conversational" | "rejected";
 
 export const PAYOUT_RATES: Record<PayoutTier, number> = {
-  instructional: 4,
-  contextual: 2.5,
-  language: 2,
-  creative: 2.5,
-  conversational: 0.5,
+  instructional: 15,
+  contextual: 5,
+  language: 8,
+  creative: 12,
+  conversational: 2,
   rejected: 0,
 };
+
+export const MAX_PAYOUT_RATE_PER_PAIR = 20;
 
 export function calculateTieredPayout(tiers: Array<{ tier: PayoutTier; units: number }>, multiplier = 1) {
   const breakdown = tiers.map(item => ({
     tier: item.tier,
     units: Math.max(0, Math.floor(item.units)),
     rate: PAYOUT_RATES[item.tier],
-    amount: Number((Math.max(0, Math.floor(item.units)) * PAYOUT_RATES[item.tier] * multiplier).toFixed(2)),
+    effectiveRate: Math.min(PAYOUT_RATES[item.tier] * multiplier, MAX_PAYOUT_RATE_PER_PAIR),
+    amount: Number((Math.max(0, Math.floor(item.units)) * Math.min(PAYOUT_RATES[item.tier] * multiplier, MAX_PAYOUT_RATE_PER_PAIR)).toFixed(2)),
   }));
   return {
+    version: PAYOUT_VERSION,
     breakdown,
     multiplier,
+    maxRatePerPair: MAX_PAYOUT_RATE_PER_PAIR,
     total: Number(breakdown.reduce((sum, item) => sum + item.amount, 0).toFixed(2)),
   };
 }

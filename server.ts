@@ -10,7 +10,7 @@ import { createStaffInvite, listStaffUsers, updateStaffRole, setStaffDisabled, i
 import { database } from "./db";
 import { hashPair } from "./lib/contentHash";
 import { validateCanonicalJson, hashCanonicalDialogues } from "./lib/canonicalJson";
-import { segmentConversation, gradeSegment, detectContextSignals, calculateTieredPayout, SEGMENTATION_VERSION, EVALUATOR_VERSION } from "./lib/contextGrading";
+import { segmentConversation, gradeSegment, detectContextSignals, calculateTieredPayout, SEGMENTATION_VERSION, EVALUATOR_VERSION, PAYOUT_VERSION, type PayoutTier } from "./lib/contextGrading";
 
 dotenv.config();
 
@@ -425,13 +425,14 @@ app.post("/api/upload-json", requireSession, (req: any, res) => {
       purifiedFileName: `chat2cash_${req.session.user.id}_${canonicalHash.slice(0, 12)}.json`,
       timestamp: new Date().toISOString(),
       status: "Draft",
-      payoutAmount: 0,
+      payoutAmount: payout.total,
       currency: profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD",
       contentHash: canonicalHash,
       metadata: {
         jsonVersion: "c2c-json-v1",
         evaluatorVersion: EVALUATOR_VERSION,
         segmentationVersion: SEGMENTATION_VERSION,
+        payoutVersion: PAYOUT_VERSION,
         anonymizationRules: ["Validated canonical anonymized JSON", "Client scores and identity fields ignored"],
         warnings,
         duplicatePreview,
@@ -523,17 +524,10 @@ app.post("/api/submit-json-draft", requireSession, (req: any, res) => {
     const suitabilityScore = grades.length
       ? Math.round(grades.reduce((sum, entry) => sum + (entry.grade?.overallScore || 0), 0) / grades.length)
       : 0;
-    const qualityRate = 0.50 + (suitabilityScore / 100) * 3.50;
-    const ratePerPair = Number((profile.demographicOptIn ? qualityRate * 2 : qualityRate).toFixed(2));
-    const payoutAmount = Number((totalUsefulLines * ratePerPair).toFixed(2));
-    const tierInputs = grades.map(({ grade }) => ({
-      tier: grade.dimensions.instructional.score >= 70 ? "instructional" as const
-        : grade.dimensions.followupValue.score >= 60 ? "contextual" as const
-          : grade.dimensions.languageVariation.score >= 55 ? "language" as const
-            : totalUsefulLines > 0 ? "conversational" as const : "rejected" as const,
-      units: 1,
-    }));
+    const tierInputs = buildDialoguePayoutInputs(gradedDialogues, grades);
     const payout = calculateTieredPayout(tierInputs, profile.demographicOptIn ? 2 : 1);
+    const payoutAmount = payout.total;
+    const ratePerPair = averageAcceptedRate(payout);
     const datasetId = `DS-${Date.now()}`;
     const timestamp = new Date().toISOString();
     const dataset: any = {
@@ -553,6 +547,7 @@ app.post("/api/submit-json-draft", requireSession, (req: any, res) => {
         jsonVersion: "c2c-json-v1",
         evaluatorVersion: EVALUATOR_VERSION,
         segmentationVersion: SEGMENTATION_VERSION,
+        payoutVersion: PAYOUT_VERSION,
         contentHash,
         hashVersion: "v1",
         anonymizationRules: ["Canonical anonymized JSON validated server-side"],
@@ -801,6 +796,45 @@ function applyContextAwareDialogueLabels(dialogues: any[], grades: any[]) {
   });
 }
 
+function payoutTierForDialogue(dialogue: any, dialogueIndex: number, grades: any[]): PayoutTier {
+  if (!dialogue?.isUseful) return "rejected";
+  const messageIndexes = [dialogueIndex * 2, dialogueIndex * 2 + 1];
+  const segmentGrades = grades
+    .filter((entry: any) => messageIndexes.some(index => entry.segment?.messageIndexes?.includes(index)))
+    .map((entry: any) => entry.grade)
+    .filter(Boolean);
+  const bestGrade = segmentGrades.length
+    ? segmentGrades.reduce((best: any, current: any) => (current.overallScore || 0) > (best.overallScore || 0) ? current : best)
+    : null;
+
+  const category = String(dialogue.category || "").toLowerCase();
+  const instructional = bestGrade?.dimensions?.instructional?.score || 0;
+  const followup = bestGrade?.dimensions?.followupValue?.score || 0;
+  const language = bestGrade?.dimensions?.languageVariation?.score || 0;
+  const creative = bestGrade?.dimensions?.creativeCultural?.score || 0;
+
+  if (instructional >= 70 || /task|instruction|informational/.test(category)) return "instructional";
+  if (creative >= 60 || /creative|cultural|insight/.test(category)) return "creative";
+  if (language >= 55 || /patois|dialect|language|code-switch/.test(category)) return "language";
+  if (followup >= 60 || /context|follow/.test(category)) return "contextual";
+  return "conversational";
+}
+
+function buildDialoguePayoutInputs(dialogues: any[], grades: any[], sourceIndexes?: number[]) {
+  return dialogues.map((dialogue, index) => ({
+    tier: payoutTierForDialogue(dialogue, sourceIndexes?.[index] ?? index, grades),
+    units: 1,
+  }));
+}
+
+function averageAcceptedRate(payout: any) {
+  const acceptedUnits = (payout.breakdown || [])
+    .filter((item: any) => item.tier !== "rejected")
+    .reduce((sum: number, item: any) => sum + item.units, 0);
+  if (!acceptedUnits) return 0;
+  return Number((payout.total / acceptedUnits).toFixed(2));
+}
+
 // Main Endpoint: Anonymize WhatsApp Chats & Run AI evaluation for usefulness
 app.post("/api/process-chat", requireSession, async (req: any, res) => {
   try {
@@ -1014,20 +1048,11 @@ Respond strictly in valid JSON:
       }
     });
 
-    const tierInputs = grades.map(({ grade }) => ({
-      tier: grade.dimensions.instructional.score >= 70 ? "instructional" as const
-        : grade.dimensions.followupValue.score >= 60 ? "contextual" as const
-          : grade.dimensions.languageVariation.score >= 55 ? "language" as const
-            : "conversational" as const,
-      units: 1,
-    }));
+    const tierInputs = buildDialoguePayoutInputs(dialogues, grades);
     const payout = calculateTieredPayout(tierInputs, (profile as any).demographicOptIn ? 2 : 1);
-    // JMD payout: $0.50–$4.00 JMD per useful dialogue pair, quality-scaled
-    // suitabilityScore 0–100 maps linearly to $0.50–$4.00 JMD
-    const qualityRate = 0.50 + (suitabilityScore / 100) * 3.50;
-    // 2x demographic multiplier pushes range to $1.00–$8.00 JMD
-    const ratePerPair = Number(((profile as any).demographicOptIn ? qualityRate * 2 : qualityRate).toFixed(2));
-    const payoutAmount = Number((totalUsefulLines * ratePerPair).toFixed(2));
+    // MindWave buyer payout: JMD $2-$20 per accepted dialogue pair by value tier.
+    const payoutAmount = payout.total;
+    const ratePerPair = averageAcceptedRate(payout);
     const currency = profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD";
     
     const datasetId = `DS-${Date.now()}`;
@@ -1057,6 +1082,7 @@ Respond strictly in valid JSON:
         jsonVersion: "c2c-json-v1",
         evaluatorVersion: EVALUATOR_VERSION,
         segmentationVersion: SEGMENTATION_VERSION,
+        payoutVersion: PAYOUT_VERSION,
         contentHash,
         hashVersion: "v1",
         anonymizationRules: [
@@ -1091,7 +1117,7 @@ Respond strictly in valid JSON:
           status: "Draft",
           userEmail: "",
           userPhone: "",
-          payoutAmount: 0,
+          payoutAmount,
       metadata: {
             ...dataset.metadata,
             payoutPendingContextReview: true,
@@ -1156,11 +1182,18 @@ Respond strictly in valid JSON:
       filteredPairHashes = newIndices.map((i: number) => pairHashes[i]);
 
       const newUsefulLines = filteredDialogues.filter((d: any) => d.isUseful).length;
-      const qualityRate = 0.5 + (dataset.metadata?.avgSuitabilityScore || 50) / 100 * 3.5;
-      const demoMultiplier = (profile as any).demographicOptIn ? 2 : 1;
-      dataset.payoutAmount = parseFloat((newUsefulLines * qualityRate * demoMultiplier).toFixed(2));
+      const filteredPayoutInputs = buildDialoguePayoutInputs(filteredDialogues, grades, newIndices);
+      const filteredPayout = calculateTieredPayout(filteredPayoutInputs, (profile as any).demographicOptIn ? 2 : 1);
+      dataset.payoutAmount = filteredPayout.total;
       dataset.dialogues = filteredDialogues;
-      dataset.metadata = { ...dataset.metadata, totalUsefulLines: newUsefulLines, partialDuplicate: true, newPairsOnly: newIndices.length };
+      dataset.metadata = {
+        ...dataset.metadata,
+        payout: filteredPayout,
+        payoutRatePerUsefulLine: averageAcceptedRate(filteredPayout),
+        totalUsefulLines: newUsefulLines,
+        partialDuplicate: true,
+        newPairsOnly: newIndices.length,
+      };
     }
 
     dataset.contentHash = contentHash;

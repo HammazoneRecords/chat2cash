@@ -45,6 +45,7 @@ export interface DatasetMetadata {
   jsonVersion?: string;
   evaluatorVersion?: string;
   segmentationVersion?: string;
+  payoutVersion?: string;
   hashVersion?: string;
   contentHash?: string;
   warnings?: string[];
