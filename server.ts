@@ -1184,7 +1184,8 @@ Respond strictly in valid JSON:
   }
 });
 
-// Contributor requests a payout for their own submitted dataset.
+// Contributor confirms the submitted dataset should stay in the payout review queue.
+// This does not create a payout transaction; payout queueing and disbursement are admin-only.
 app.post("/api/payout-requests", requireSession, (req: any, res) => {
   const { datasetId } = req.body;
   const userId = req.session.user.id;
@@ -1196,19 +1197,16 @@ app.post("/api/payout-requests", requireSession, (req: any, res) => {
     return res.status(409).json({ error: "This dataset is not awaiting payout review." });
   }
 
-  const profile = database.getProfile(userId);
-  if (!profile) return res.status(404).json({ error: "User profile not found." });
-  const existing = database.getTransactionsByDataset(datasetId);
-  if (existing.length) return res.json({ success: true, transaction: existing[0] });
-
-  const txId = `WIPAY-TX-${Date.now()}`;
-  const transaction: any = {
-    id: txId, userId, datasetId, amount: dataset.payoutAmount,
-    currency: dataset.currency || "JMD", gateway: "WiPay", status: "PENDING",
-    timestamp: new Date().toISOString(), referenceHash: txId,
-  };
-  database.createTransaction(transaction);
-  res.json({ success: true, transaction });
+  database.addAuditLog("payout_review_requested", userId, datasetId, JSON.stringify({
+    status: dataset.status,
+    payoutAmount: dataset.payoutAmount,
+    currency: dataset.currency || "JMD",
+  }));
+  res.json({
+    success: true,
+    dataset,
+    message: "Payout review request confirmed. A moderator must approve this dataset before admin can queue payment.",
+  });
 });
 
 // Returns the contributor's WiPay payout link for admin to manually disburse

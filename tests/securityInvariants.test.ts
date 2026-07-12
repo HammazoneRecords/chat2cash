@@ -48,6 +48,22 @@ test("admin payout cannot trust client owner or amount and disbursement is idemp
   assert.match(server, /if \(dataset\.status === "Disbursed" \|\| transactions\[0\]\.status === "DISBURSED"\)/);
 });
 
+test("contributor payout review request cannot create payout transaction or approval", () => {
+  const requestSection = server.slice(
+    server.indexOf('app.post("/api/payout-requests"'),
+    server.indexOf("// Returns the contributor's WiPay payout link"),
+  );
+  const requestHandler = fileProcessor.slice(
+    fileProcessor.indexOf("const handleInitiatePayout"),
+    fileProcessor.indexOf("const filteredDialogues"),
+  );
+  assert.match(requestSection, /payout_review_requested/);
+  assert.match(requestSection, /A moderator must approve this dataset before admin can queue payment/);
+  assert.doesNotMatch(requestSection, /database\.createTransaction/);
+  assert.doesNotMatch(requestHandler, /status: "Approved"/);
+  assert.match(requestHandler, /Moderator approval is required before payment is queued/);
+});
+
 test("staff lifecycle routes enforce role boundaries and disabled sessions", () => {
   assert.match(server, /app\.get\("\/api\/admin\/staff", requireRole\("admin", "owner"\)/);
   assert.match(server, /app\.post\("\/api\/admin\/staff\/invite", requireRole\("admin", "owner"\)/);
