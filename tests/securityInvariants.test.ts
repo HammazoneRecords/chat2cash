@@ -26,9 +26,12 @@ test("legacy profile creation is disabled", () => {
   assert.match(server, /Legacy profile creation is disabled/);
 });
 
-test("public reconciliation returns aggregates only", () => {
+test("public reconciliation returns aggregates and safe receipt rows only", () => {
   assert.match(server, /app\.get\("\/api\/reconciliation"/);
-  assert.match(server, /datasets: \[\]/);
+  assert.match(server, /publicReceipt: true/);
+  assert.match(server, /dialogues: \[\]/);
+  assert.match(server, /originalLinesPreview: \[\]/);
+  assert.match(server, /anonymous-contributor/);
   assert.match(server, /profiles: \[\]/);
   assert.match(server, /transactions: \[\]/);
 });
@@ -110,6 +113,7 @@ test("ZIP processing response includes context grading metadata", () => {
   assert.match(processChatSection, /const segments = segmentConversation\(normalizedMessages\)/);
   assert.match(processChatSection, /const grades = segments\.map\(segment => \(\{ segment, grade: gradeSegment\(normalizedMessages, segment\) \}\)\)/);
   assert.match(processChatSection, /const contextSignals = detectContextSignals\(normalizedMessages\)/);
+  assert.match(processChatSection, /applyContextAwareDialogueLabels\(dialogues, grades\)/);
   assert.match(processChatSection, /const payout = calculateTieredPayout/);
   assert.match(processChatSection, /evaluatorVersion: EVALUATOR_VERSION/);
   assert.match(processChatSection, /segmentationVersion: SEGMENTATION_VERSION/);

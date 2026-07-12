@@ -300,9 +300,36 @@ app.post("/api/profile", (req, res) => {
 
 // Fetch detailed database statistics & transaction history for reconciliation
 app.get("/api/reconciliation", (req, res) => {
+  const datasets = database.getAllDatasets().map((dataset: any) => ({
+    id: dataset.id,
+    userId: `anon-${String(dataset.id).slice(-6)}`,
+    userEmail: "anonymous-contributor",
+    userPhone: "",
+    originalFileName: "sanitized-chat-export",
+    purifiedFileName: dataset.purifiedFileName,
+    timestamp: dataset.timestamp,
+    status: dataset.status,
+    payoutAmount: dataset.payoutAmount,
+    currency: dataset.currency,
+    contentHash: dataset.contentHash || dataset.metadata?.contentHash || "",
+    hashVersion: dataset.hashVersion || dataset.metadata?.hashVersion || "v1",
+    metadata: {
+      jsonVersion: dataset.metadata?.jsonVersion,
+      evaluatorVersion: dataset.metadata?.evaluatorVersion,
+      segmentationVersion: dataset.metadata?.segmentationVersion,
+      suitabilityScore: dataset.metadata?.suitabilityScore,
+      totalLinesAnalyzed: dataset.metadata?.totalLinesAnalyzed,
+      totalUsefulLines: dataset.metadata?.totalUsefulLines,
+      payout: dataset.metadata?.payout,
+      publicReceipt: true,
+    },
+    dialogues: [],
+    originalLinesPreview: [],
+  }));
+
   res.json({
     stats: database.getStats(),
-    datasets: [],
+    datasets,
     profiles: [],
     transactions: [],
   });
@@ -676,6 +703,38 @@ function evaluateDialogueLocally(d: { prompt: string; response: string }) {
   return null;
 }
 
+function applyContextAwareDialogueLabels(dialogues: any[], grades: any[]) {
+  const gradeByMessageIndex = new Map<number, any>();
+  grades.forEach((entry: any) => {
+    (entry.segment?.messageIndexes || []).forEach((messageIndex: number) => {
+      gradeByMessageIndex.set(messageIndex, entry.grade);
+    });
+  });
+
+  dialogues.forEach((dialogue, idx) => {
+    const messageIndexes = [idx * 2, idx * 2 + 1];
+    const segmentGrades = messageIndexes
+      .map(messageIndex => gradeByMessageIndex.get(messageIndex))
+      .filter(Boolean);
+    if (!segmentGrades.length) return;
+
+    const bestGrade = segmentGrades.reduce((best: any, current: any) =>
+      (current.overallScore || 0) > (best.overallScore || 0) ? current : best,
+    );
+    const followupScore = bestGrade.dimensions?.followupValue?.score || 0;
+    const languageScore = bestGrade.dimensions?.languageVariation?.score || 0;
+    const coherenceScore = bestGrade.dimensions?.contextCoherence?.score || 0;
+    const isHardReject = /system alert|omitted media|deleted this message|missed voice call/i.test(dialogue.explanation || "");
+
+    if (!isHardReject && !dialogue.isUseful && (followupScore >= 60 || languageScore >= 55 || coherenceScore >= 70 || bestGrade.overallScore >= 58)) {
+      dialogue.isUseful = true;
+      dialogue.score = Math.max(dialogue.score || 0, Math.min(88, bestGrade.overallScore || 70));
+      dialogue.category = followupScore >= 60 ? "Contextual Follow-up" : "Contextual Conversation";
+      dialogue.explanation = `Context-aware grade: relevant within ${bestGrade.evaluatorVersion || EVALUATOR_VERSION}; preserved as useful context instead of isolated noise.`;
+    }
+  });
+}
+
 // Main Endpoint: Anonymize WhatsApp Chats & Run AI evaluation for usefulness
 app.post("/api/process-chat", requireSession, async (req: any, res) => {
   try {
@@ -804,7 +863,6 @@ Respond strictly in valid JSON:
     }
     
     // Apply statistical or AI-grounded labels down to the full dialogue list
-    let totalUsefulLines = 0;
     dialogues.forEach((d, idx) => {
       const aiEval = aiscoredIndicators[idx];
       const localEval = localEvaluations[idx];
@@ -831,29 +889,7 @@ Respond strictly in valid JSON:
         d.category = isStandardNoise ? "Noise" : "Informational";
         d.explanation = d.isUseful ? "Meets length and lexical diversity check." : "Too brief or high informal noise.";
       }
-      
-      if (d.isUseful) {
-        totalUsefulLines++;
-      }
     });
-
-    // Mirror updates back to raw lines preview so they match visually in UI
-    originalLinesPreview.forEach((line, idx) => {
-      // Find matching dialogue turn
-      const dialogueIdx = Math.floor(idx / 2);
-      if (dialogues[dialogueIdx]) {
-        line.isUseful = dialogues[dialogueIdx].isUseful;
-      }
-    });
-    
-    // JMD payout: $0.50–$4.00 JMD per useful dialogue pair, quality-scaled
-    // suitabilityScore 0–100 maps linearly to $0.50–$4.00 JMD
-    const qualityRate = 0.50 + (suitabilityScore / 100) * 3.50;
-    // 2x demographic multiplier pushes range to $1.00–$8.00 JMD
-    const ratePerPair = Number(((profile as any).demographicOptIn ? qualityRate * 2 : qualityRate).toFixed(2));
-    
-    const payoutAmount = Number((totalUsefulLines * ratePerPair).toFixed(2));
-    const currency = profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD";
     
     const uniqueTokens = Math.round(totalLinesAnalyzed * 4.8);
     const estimatedTokens = Math.round(totalLinesAnalyzed * 15.2);
@@ -871,6 +907,18 @@ Respond strictly in valid JSON:
     const segments = segmentConversation(normalizedMessages);
     const grades = segments.map(segment => ({ segment, grade: gradeSegment(normalizedMessages, segment) }));
     const contextSignals = detectContextSignals(normalizedMessages);
+    applyContextAwareDialogueLabels(dialogues, grades);
+    const totalUsefulLines = dialogues.filter((d: any) => d.isUseful).length;
+
+    // Mirror updates back to raw lines preview so they match visually in UI
+    originalLinesPreview.forEach((line, idx) => {
+      // Find matching dialogue turn
+      const dialogueIdx = Math.floor(idx / 2);
+      if (dialogues[dialogueIdx]) {
+        line.isUseful = dialogues[dialogueIdx].isUseful;
+      }
+    });
+
     const tierInputs = grades.map(({ grade }) => ({
       tier: grade.dimensions.instructional.score >= 70 ? "instructional" as const
         : grade.dimensions.followupValue.score >= 60 ? "contextual" as const
@@ -879,6 +927,13 @@ Respond strictly in valid JSON:
       units: 1,
     }));
     const payout = calculateTieredPayout(tierInputs, (profile as any).demographicOptIn ? 2 : 1);
+    // JMD payout: $0.50–$4.00 JMD per useful dialogue pair, quality-scaled
+    // suitabilityScore 0–100 maps linearly to $0.50–$4.00 JMD
+    const qualityRate = 0.50 + (suitabilityScore / 100) * 3.50;
+    // 2x demographic multiplier pushes range to $1.00–$8.00 JMD
+    const ratePerPair = Number(((profile as any).demographicOptIn ? qualityRate * 2 : qualityRate).toFixed(2));
+    const payoutAmount = Number((totalUsefulLines * ratePerPair).toFixed(2));
+    const currency = profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD";
     
     const datasetId = `DS-${Date.now()}`;
     const timestampStr = new Date().toISOString();
