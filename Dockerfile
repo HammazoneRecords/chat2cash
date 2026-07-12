@@ -5,6 +5,7 @@ RUN npm install -g pnpm@10
 
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile
+RUN pnpm rebuild better-sqlite3 esbuild
 
 COPY . .
 RUN pnpm run build
@@ -17,6 +18,7 @@ RUN npm install -g pnpm@10
 
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile --prod
+RUN pnpm rebuild better-sqlite3
 
 COPY --from=builder /app/dist ./dist
 
