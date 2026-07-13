@@ -9,12 +9,13 @@ import RegistrationForm from "./components/RegistrationForm";
 import LoginForm from "./components/LoginForm";
 import FileProcessor from "./components/FileProcessor";
 import ReconciliationLedger from "./components/ReconciliationLedger";
+import MySubmissions from "./components/MySubmissions";
 import DynamicBackground from "./components/DynamicBackground";
 import { UserProfile, ProcessedDataset } from "./types";
 import { authClient } from "../lib/auth-client";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'anonymize' | 'ledger'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'anonymize' | 'submissions' | 'ledger'>('home');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [systemConfig, setSystemConfig] = useState<any>(null);
@@ -56,6 +57,10 @@ export default function App() {
   const onNewDatasetCreated = (dataset: ProcessedDataset) => {
     // Optionally trigger any global state changes or simply bubble up logs if required
   };
+
+  const publicAccountCode = userProfile?.userId
+    ? `acct-${userProfile.userId.slice(-6)}`
+    : "";
 
   return (
     <div className="min-h-screen bg-[#060a13] text-[#cbd5e1] flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-200" id="main-application-frame">
@@ -106,6 +111,19 @@ export default function App() {
             >
               Public Ledger
             </button>
+            {userProfile && (
+              <button
+                id="nav-tab-submissions"
+                onClick={() => setActiveTab('submissions')}
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'submissions'
+                    ? "bg-[#1e293b] text-white shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                My Submissions
+              </button>
+            )}
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -121,7 +139,7 @@ export default function App() {
                   <div className="flex items-center gap-1 justify-end text-[9px] text-slate-400 font-mono mt-0.5">
                     {userProfile.town && <span className="opacity-80">{userProfile.town},</span>}
                     <span className="font-bold text-emerald-500 uppercase">{userProfile.country}</span>
-                    <span className="opacity-60 font-medium">({userProfile.userId})</span>
+                    <span className="opacity-60 font-medium">({publicAccountCode})</span>
                   </div>
                 </div>
                 <button
@@ -191,6 +209,10 @@ export default function App() {
 
         {activeTab === 'ledger' && (
           <ReconciliationLedger />
+        )}
+
+        {activeTab === 'submissions' && userProfile && (
+          <MySubmissions />
         )}
       </main>
 

@@ -245,6 +245,15 @@ export class ChatDB {
     }));
   }
 
+  getDatasetsByUser(userId: string) {
+    const rows = this.db.prepare("SELECT * FROM datasets WHERE userId = ? ORDER BY createdAt DESC").all(userId) as any[];
+    return rows.map(row => ({
+      ...row,
+      metadata: JSON.parse(row.metadata || "{}"),
+      dialogues: JSON.parse(row.dialogues || "[]"),
+    }));
+  }
+
   updateDataset(datasetId: string, updates: any) {
     const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
     const values = Object.values(updates);

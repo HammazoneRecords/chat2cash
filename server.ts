@@ -936,6 +936,34 @@ function safeTrainingExportDataset(dataset: any) {
   };
 }
 
+function contributorSubmissionSummary(dataset: any) {
+  const metadata = dataset.metadata || {};
+  const txs = database.getTransactionsByDataset(dataset.id);
+  const receipt = txs.find((tx: any) => tx.receiptNumber)?.receiptNumber || null;
+  const latestTransaction = txs[0] || null;
+  return {
+    id: dataset.id,
+    status: dataset.status,
+    payoutAmount: Number(dataset.payoutAmount || 0),
+    currency: dataset.currency || "JMD",
+    submittedAt: dataset.timestamp || dataset.createdAt,
+    purifiedFileName: dataset.purifiedFileName,
+    contentHash: dataset.contentHash || metadata.contentHash || "",
+    hashVersion: dataset.hashVersion || metadata.hashVersion || "v1",
+    duplicateStatus: dataset.dupStatus || metadata.duplicateStatus || "clean",
+    totalLinesAnalyzed: Number(metadata.totalLinesAnalyzed || 0),
+    totalUsefulLines: Number(metadata.totalUsefulLines || 0),
+    suitabilityScore: metadata.suitabilityScore ?? null,
+    payoutVersion: metadata.payoutVersion || "",
+    payoutRatePerUsefulLine: Number(metadata.payoutRatePerUsefulLine || 0),
+    payoutBreakdown: metadata.payout?.breakdown || [],
+    receiptNumber: receipt,
+    transactionStatus: latestTransaction?.status || null,
+    transactionId: latestTransaction?.id || null,
+    proofAddedAt: latestTransaction?.proofAddedAt || null,
+  };
+}
+
 // Main Endpoint: Anonymize WhatsApp Chats & Run AI evaluation for usefulness
 app.post("/api/process-chat", requireSession, async (req: any, res) => {
   try {
@@ -1151,7 +1179,7 @@ Respond strictly in valid JSON:
 
     const tierInputs = buildDialoguePayoutInputs(dialogues, grades);
     const payout = calculateTieredPayout(tierInputs, (profile as any).demographicOptIn ? 2 : 1);
-    // MindWave buyer payout: JMD $5-$50 per accepted dialogue pair by value tier.
+    // MindWave buyer payout: JMD $10-$75 per accepted dialogue pair by value tier.
     const payoutAmount = payout.total;
     const ratePerPair = averageAcceptedRate(payout);
     const currency = profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD";
@@ -1430,6 +1458,13 @@ app.get("/api/my-receipt/:datasetId", requireSession, (req: any, res) => {
   const txs = database.getTransactionsByDataset(datasetId);
   const receipt = txs.find((t: any) => t.receiptNumber)?.receiptNumber || null;
   return res.json({ receiptNumber: receipt, status: dataset.status });
+});
+
+// ── User: List owned submissions and receipt state ─────────────────────────
+app.get("/api/my-submissions", requireSession, (req: any, res) => {
+  const userId = req.session.user.id;
+  const datasets = database.getDatasetsByUser(userId).map(contributorSubmissionSummary);
+  return res.json({ submissions: datasets });
 });
 
 // ── Admin: Picture-password verify ────────────────────────────────────────

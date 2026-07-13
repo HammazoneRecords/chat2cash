@@ -6,9 +6,11 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "..");
 const server = fs.readFileSync(path.join(root, "server.ts"), "utf8");
 const landing = fs.readFileSync(path.join(root, "src", "components", "LandingHero.tsx"), "utf8");
+const appShell = fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8");
 const adminDashboard = fs.readFileSync(path.join(root, "src", "components", "AdminDashboard.tsx"), "utf8");
 const adminLogin = fs.readFileSync(path.join(root, "src", "components", "AdminLogin.tsx"), "utf8");
 const fileProcessor = fs.readFileSync(path.join(root, "src", "components", "FileProcessor.tsx"), "utf8");
+const mySubmissions = fs.readFileSync(path.join(root, "src", "components", "MySubmissions.tsx"), "utf8");
 const dockerignore = fs.readFileSync(path.join(root, ".dockerignore"), "utf8");
 
 test("processing endpoint enforces session ownership", () => {
@@ -63,6 +65,30 @@ test("contributor payout review request cannot create payout transaction or appr
   assert.doesNotMatch(requestSection, /database\.createTransaction/);
   assert.doesNotMatch(requestHandler, /status: "Approved"/);
   assert.match(requestHandler, /Moderator approval is required before payment is queued/);
+});
+
+test("contributors can return to owned submission receipts without raw content", () => {
+  const mySubmissionsSection = server.slice(
+    server.indexOf('app.get("/api/my-submissions"'),
+    server.indexOf("// ── Admin: Picture-password verify"),
+  );
+  const summaryHelper = server.slice(
+    server.indexOf("function contributorSubmissionSummary"),
+    server.indexOf("// Main Endpoint: Anonymize WhatsApp Chats"),
+  );
+
+  assert.match(mySubmissionsSection, /requireSession/);
+  assert.match(mySubmissionsSection, /database\.getDatasetsByUser\(userId\)/);
+  assert.match(mySubmissionsSection, /contributorSubmissionSummary/);
+  assert.match(summaryHelper, /receiptNumber/);
+  assert.match(summaryHelper, /payoutBreakdown/);
+  assert.doesNotMatch(summaryHelper, /dialogues|originalLinesPreview|originalLine|userEmail|userPhone|email:|phone:|wipayLink|wipayAccount|idPhoto/);
+  assert.match(appShell, /nav-tab-submissions/);
+  assert.match(appShell, /acct-\$\{userProfile\.userId\.slice\(-6\)\}/);
+  assert.match(fileProcessor, /const publicAccountCode = user\.userId \? `acct-\$\{user\.userId\.slice\(-6\)\}`/);
+  assert.doesNotMatch(fileProcessor, /Active Verification Key/);
+  assert.match(mySubmissions, /fetch\("\/api\/my-submissions"/);
+  assert.match(mySubmissions, /Raw chat lines and full anonymized dialogues are not returned here/);
 });
 
 test("staff lifecycle routes enforce role boundaries and disabled sessions", () => {

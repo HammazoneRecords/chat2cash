@@ -12,7 +12,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 - Infrastructure files: `Dockerfile`, `.env.example`, `package.json`, `scripts/release-gate.ps1`, `scripts/api-smoke.ps1`.
 - Verification commands:
   - `corepack pnpm audit --audit-level moderate` -> no known vulnerabilities found.
-  - `corepack pnpm test:release` -> passed: typecheck, 32 unit/security/database/responsive tests, production build, API smoke.
+  - `corepack pnpm test:release` -> passed: typecheck, 34 unit/security/database/responsive tests, production build, API smoke.
 
 ## Confirmed Working
 
@@ -24,8 +24,8 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | Public ledger privacy shape | Working | `/api/reconciliation` maps rows to anonymous receipt records and returns empty `profiles`, `transactions`, `dialogues`, and `originalLinesPreview`. | Do not expose contributor PII or raw content publicly. |
 | JSON tamper resistance | Working | `validateCanonicalJson` and `/api/submit-json-draft` recompute hashes, grading, duplicate status, payout, and ownership from the session. | Continue ignoring client score, payout, role, status, and identity fields. |
 | Duplicate policy | Working | Full duplicate and all-pair duplicate paths strike cross-user duplicates; same-user full duplicate is idempotent. | Keep pre-submit warnings visible before final submit. |
-| Payout model | Working | `PAYOUT_VERSION = c2c-payout-v3-launch-buyer`; tier rates are capped at JMD 50 per accepted pair. | Keep copy and stored metadata versioned together. |
-| Release gate | Working | `corepack pnpm test:release` passed on 2026-07-13. | Keep release gate required before deploy. |
+| Payout model | Working | `PAYOUT_VERSION = c2c-payout-v4-mindwave-buyer`; tier rates are capped at JMD 75 per accepted pair. | Keep copy and stored metadata versioned together. |
+| Release gate | Working | `corepack pnpm test:release` passed on 2026-07-13 with 34 tests, production build, and API smoke. | Keep release gate required before deploy. |
 | Dependency audit | Working | `corepack pnpm audit --audit-level moderate` returned no known vulnerabilities. | Re-run before launch/deploy. |
 
 ## Post-Audit Fix Progress
@@ -37,6 +37,8 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-004 | Fixed | Replaced global 50MB parsing with 1MB default, 6MB profile update limit, and 50MB upload/JSON submit route limits. | `server.ts`, `tests/securityInvariants.test.ts`. | Add payload-size API smoke tests. |
 | AUD-005 | Fixed | Admin single and bulk dataset exports now use a `c2c-training-export-v1` safe export contract instead of serializing whole dataset records. | `server.ts`, `tests/securityInvariants.test.ts`. | Add runtime/API export smoke test after next local server restart. |
 | AUD-006 | Partially fixed | Added baseline headers, production CSP, and same-origin guard for state-changing requests. | `server.ts`, `tests/securityInvariants.test.ts`. | Add browser/API proof for cross-site POST rejection and decide whether CSRF tokens are required beyond origin checks. |
+| AUD-015 | Fixed locally | Added `/api/my-submissions` and a `My Submissions` tab with owner-scoped receipt/status/payout summaries and no raw dialogue payload. | `db.ts`, `server.ts`, `src/App.tsx`, `src/components/MySubmissions.tsx`, `tests/securityInvariants.test.ts`. | Browser/live walkthrough still required. |
+| AUD-017 | Fixed locally | Masked contributor account display in top nav and upload panel to `acct-last6` instead of showing the full internal user ID. | `src/App.tsx`, `src/components/FileProcessor.tsx`, `tests/securityInvariants.test.ts`. | Browser/live walkthrough still required. |
 
 ## Critical Findings
 
@@ -66,9 +68,9 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 
 | ID | Severity | Area | Finding | Evidence | Recommended fix | Acceptance check |
 |---|---:|---|---|---|---|---|
-| AUD-015 | High | Contributor returning state | No contributor “My submissions / receipts” view. | `App.tsx` has tabs only `home`, `anonymize`, `ledger`; `FileProcessor` state is local. | Add authenticated submissions page listing own datasets, status, payout estimate, and receipt. | User can sign out/in and see submitted dataset status. |
+| AUD-015 | High | Contributor returning state | Fixed locally: contributor now has a `My Submissions` tab backed by `/api/my-submissions`. | `App.tsx`, `server.ts`, `db.ts`, `MySubmissions.tsx`. | Browser-test sign out/in and verify submitted dataset status is visible. | User can sign out/in and see submitted dataset status. |
 | AUD-016 | High | Signup friction | Registration requires WiPay account/link before previewing anonymization. | `RegistrationForm.tsx` blocks submit without WiPay account and payout link. | Allow preview/draft account with payout profile completion before final submit or payout request. | New user can inspect anonymization before entering payout details. |
-| AUD-017 | High | Full user ID display | UI shows full internal user ID in nav and upload panel. | `App.tsx` shows `({userProfile.userId})`; `FileProcessor.tsx` shows Active Verification Key. | Mask user ID by default and provide copy action if needed. | Normal UI shows short anonymous account/receipt code only. |
+| AUD-017 | High | Full user ID display | Fixed locally: nav and upload panel now show a short `acct-last6` code instead of the full internal user ID. | `App.tsx`; `FileProcessor.tsx`. | Browser-test contributor view after deploy. | Normal UI shows short anonymous account/receipt code only. |
 | AUD-018 | Medium | Payout language consistency | Some contributor copy still says `WIPAY ESTIMATE ESCROW`, `validated chatbot training pair`, `Legal Audit Locking`. | `FileProcessor.tsx` payout card. | Replace with plain customer wording: estimated payout, accepted chat pair, review window. | Contributor can understand status without financial/technical jargon. |
 | AUD-019 | Medium | Upload guidance | Upload entry does not clearly explain TXT vs ZIP vs reviewed JSON or WhatsApp export steps. | `FileProcessor.tsx` says supported raw TXT, clean ZIP, reviewed JSON. | Add compact upload -> review/download -> submit explanation plus WhatsApp export checklist. | Bad ZIP/no TXT error includes exact re-export instructions. |
 | AUD-020 | Medium | Admin UX | Admin dashboard uses prompt dialogs and dense direct action rows. | `AdminDashboard.tsx` uses `window.prompt`; moderation/strike/payout buttons act directly. | Replace with forms/modals, reason fields, ordered payout workflow, and confirmations. | High-impact actions require confirmation and reason before POST. |
@@ -110,5 +112,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | Date | Item | Proof |
 |---|---|---|
 | 2026-07-13 | Dependency audit | `corepack pnpm audit --audit-level moderate` -> no known vulnerabilities found. |
-| 2026-07-13 | Local release gate | `corepack pnpm test:release` -> passed typecheck, 33 tests, production build, API smoke. |
+| 2026-07-13 | Local release gate | `corepack pnpm test:release` -> passed typecheck, 34 tests, production build, API smoke. |
 | 2026-07-13 | AUD-005 admin exports | Added `c2c-training-export-v1` safe export contract and invariant test. |
+| 2026-07-13 | AUD-015/AUD-017 contributor return + masked account code | Added owner-scoped submissions API/UI, masked account code in nav/upload, and invariant coverage. |
+| 2026-07-13 | Payout model v4 | Raised MindWave buyer text-chat rates to JMD 10/20/30/45/60 by tier with JMD 75 max displayed rate per accepted pair. |

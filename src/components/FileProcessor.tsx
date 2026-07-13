@@ -30,6 +30,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
   const [receiptNumber, setReceiptNumber] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const publicAccountCode = user.userId ? `acct-${user.userId.slice(-6)}` : "acct-review";
 
   const fetchReceipt = async (datasetId: string) => {
     try {
@@ -349,7 +350,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
               <span className="text-[10px] font-mono font-bold tracking-widest text-[#10b981] uppercase block">Purification Terminal</span>
               <h2 className="text-xl font-display font-extrabold text-white mt-1">Anonymize Your Conversation</h2>
               <p className="text-xs text-slate-400 mt-1">
-                Active Verification Key: <strong className="text-emerald-400 font-mono text-[11px] font-bold">{user.userId}</strong>
+                Account Code: <strong className="text-emerald-400 font-mono text-[11px] font-bold">{publicAccountCode}</strong>
               </p>
             </div>
             <div className="text-xs bg-emerald-950/40 text-emerald-300 px-3 py-1.5 rounded-xl font-mono border border-emerald-900/30 self-start">
