@@ -6,6 +6,7 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "..");
 const server = fs.readFileSync(path.join(root, "server.ts"), "utf8");
 const landing = fs.readFileSync(path.join(root, "src", "components", "LandingHero.tsx"), "utf8");
+const helpFaq = fs.readFileSync(path.join(root, "src", "components", "HelpFaq.tsx"), "utf8");
 const appShell = fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8");
 const adminDashboard = fs.readFileSync(path.join(root, "src", "components", "AdminDashboard.tsx"), "utf8");
 const adminLogin = fs.readFileSync(path.join(root, "src", "components", "AdminLogin.tsx"), "utf8");
@@ -165,6 +166,15 @@ test("staff lifecycle routes enforce role boundaries and disabled sessions", () 
 test("voice waitlist uses the server and not browser-only persistence", () => {
   assert.match(landing, /fetch\("\/api\/waitlist"/);
   assert.doesNotMatch(landing, /localStorage\.setItem\(|localStorage\.getItem\(/);
+});
+
+test("voice notes are clearly waitlist-only during text-chat launch", () => {
+  assert.match(landing, /Future audio program/);
+  assert.match(landing, /not open for paid upload yet/);
+  assert.match(helpFaq, /Paid uploads are text-chat only at launch/);
+  assert.match(helpFaq, /waitlist only notifies you/);
+  assert.doesNotMatch(landing, /\$300|7,000|est\. \$1,200|est\. \$3,800|PREMIUM TIER/);
+  assert.doesNotMatch(helpFaq, /coming soon!|highly demanded training data|get notified the second/);
 });
 
 test("AI evaluation is bounded and has deterministic fallback", () => {

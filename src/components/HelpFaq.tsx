@@ -46,7 +46,7 @@ export default function HelpFaq() {
     {
       id: "pay-3",
       question: "Are WhatsApp Voice Notes supported for payouts?",
-      answer: "Not yet, but this dynamic audio capability is coming soon! Real-world speech recordings carrying natural Caribbean dialects and accents represent highly demanded training data for international speech synthesis and transcription models. We are designing a fully isolated browser speech transcriber. You can insert your contact details in our 'Voice Notes Notification' waitlist card in the Home View to get notified the second this unlocks.",
+      answer: "Not yet. Paid uploads are text-chat only at launch. Voice notes are a future audio program, and the waitlist only notifies you when that separate upload flow opens.",
       category: "payout",
       icon: DollarSign,
     },

@@ -140,12 +140,12 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5">per accepted pair · bonus capped</div>
           </div>
-          <div className="text-slate-700 text-xl hidden sm:block font-light">→</div>
-          <div className="px-6 py-3 bg-emerald-950/30 border border-emerald-700/40 rounded-2xl text-center min-w-[160px] relative">
-            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] bg-emerald-500 text-slate-950 font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-widest whitespace-nowrap">PREMIUM</div>
-            <div className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-widest mb-1">🎙️ Voice Notes</div>
-            <div className="text-lg font-bold text-emerald-300">$300 – $7,000 JMD</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">per voice clip</div>
+          <div className="text-slate-700 text-xl hidden sm:block font-light">+</div>
+          <div className="px-6 py-3 bg-slate-950/50 border border-slate-800 rounded-2xl text-center min-w-[160px] relative">
+            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] bg-slate-800 text-slate-300 font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-widest whitespace-nowrap">WAITLIST</div>
+            <div className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-widest mb-1">Voice Notes</div>
+            <div className="text-lg font-bold text-slate-300">Future audio program</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">not open for paid upload yet</div>
           </div>
         </motion.div>
 
@@ -380,16 +380,16 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                   <div className="p-2 rounded-xl bg-emerald-950/60 text-emerald-400 border border-emerald-900/40">
                     <Mic className="w-5 h-5" />
                   </div>
-                  <span className="text-[9px] bg-emerald-500 text-slate-950 font-extrabold px-2 py-0.5 rounded uppercase tracking-widest">PREMIUM TIER</span>
+                  <span className="text-[9px] bg-slate-800 text-slate-300 font-extrabold px-2 py-0.5 rounded uppercase tracking-widest">WAITLIST ONLY</span>
                 </div>
                 <h3 className="text-xl font-display font-bold text-white">Voice Notes — Waitlist Only</h3>
                 <p className="text-sm text-slate-400 leading-relaxed max-w-lg">
                   Voice-note uploads are not live yet. Join the waitlist if you want to be notified when Caribbean accent audio payouts open.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded-full font-mono">$300 JMD short clip</span>
-                  <span className="text-[10px] bg-emerald-950/60 border border-emerald-900/40 text-emerald-300 px-2.5 py-1 rounded-full font-mono">up to $7,000 JMD</span>
-                  <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded-full font-mono">JMD · TTD · BBD</span>
+                  <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded-full font-mono">No paid audio upload today</span>
+                  <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded-full font-mono">Text chats are live</span>
+                  <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded-full font-mono">Notify list only</span>
                 </div>
               </div>
               <button
@@ -413,7 +413,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                     <div className="text-xs font-bold text-slate-200">Urban Male Voice · Kingston</div>
                     <div className="text-[10px] text-slate-500 font-mono">0:34 · Patois-heavy</div>
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-900/30 px-2 py-0.5 rounded-full">est. $1,200 JMD</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-full">sample only</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 opacity-50 cursor-not-allowed">
@@ -437,7 +437,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                     <div className="text-xs font-bold text-slate-200">Female Voice · Rural St. Elizabeth</div>
                     <div className="text-[10px] text-slate-500 font-mono">1:12 · Country dialect</div>
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-900/40 px-2 py-0.5 rounded-full">est. $3,800 JMD</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-full">sample only</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 opacity-50 cursor-not-allowed">
@@ -573,7 +573,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                       <div className="p-2 rounded-xl bg-emerald-950/60 text-emerald-400 border border-emerald-900/40">
                         <Mic className="w-4 h-4" />
                       </div>
-                      <span className="text-[9px] bg-emerald-500 text-slate-950 font-extrabold px-2 py-0.5 rounded uppercase tracking-widest">PREMIUM TIER</span>
+                      <span className="text-[9px] bg-slate-800 text-slate-300 font-extrabold px-2 py-0.5 rounded uppercase tracking-widest">WAITLIST ONLY</span>
                     </div>
                     <h2 className="text-xl font-display font-bold text-white">Voice Notes — Get Notified</h2>
                     <p className="text-xs text-slate-400 leading-relaxed">

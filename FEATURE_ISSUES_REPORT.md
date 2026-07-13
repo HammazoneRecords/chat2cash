@@ -73,7 +73,7 @@ Status values:
 
 | ID | Status | Priority | Feature | User-facing issue | Evidence | Suggested fix | Acceptance check |
 |---|---|---:|---|---|---|---|---|
-| UX-026 | `[ ] Open` | P1 | Voice notes | Voice note payouts are presented heavily with specific payout amounts even though feature is not live. Users may expect they can submit voice now. | Live Overview; source: `LandingHero.tsx`. | Label voice notes clearly as waitlist only and visually separate from live text chat payouts. | No user expects voice upload is available today. |
+| UX-026 | `[?] Needs proof` | P1 | Voice notes | Fixed locally: voice notes are labeled as waitlist/future audio only, specific voice payout amounts were removed from the hero/waitlist cards, and FAQ says paid uploads are text-chat only at launch. | Source: `LandingHero.tsx`, `HelpFaq.tsx`, invariant test. | Browser-test landing at mobile and desktop after deploy. | No user expects voice upload is available today. |
 | UX-027 | `[ ] Open` | P2 | Voice waitlist | Voice notification forms are useful, but placement repeats and may distract from core text-chat launch flow. | Live Overview. | Keep one clear waitlist CTA or collapse secondary forms. | Primary launch flow remains text chat upload. |
 
 ## Scoring and Review Issues
@@ -127,3 +127,4 @@ Status values:
 | 2026-07-13 | UX-004, UX-015 | Updated buyer pricing to v5 JMD $25-$200, made text-chat payout settlement JMD for launch, and changed country copy to profile/location context instead of settlement currency. |
 | 2026-07-13 | UX-021 | Added inline reason fields and server-side reason requirements for high-impact admin actions. Browser/live proof still needed. |
 | 2026-07-13 | UX-030, UX-029 | Removed anti-Patois scoring language, replaced dense review labels with plain payout-review labels, and displayed per-turn explanations directly in the review card. |
+| 2026-07-13 | UX-026 | Removed specific voice payout amounts and premium-tier framing from the landing voice sections; FAQ now states paid uploads are text-chat only at launch. |
