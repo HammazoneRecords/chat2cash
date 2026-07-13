@@ -283,6 +283,15 @@ test("contributors can preview before payout setup but cannot submit payable dat
   assert.match(fileProcessor, /disabled=\{loading \|\| !hasPayoutProfile\}/);
 });
 
+test("text chat payouts use JMD launch settlement independent of profile country", () => {
+  assert.match(server, /const TEXT_CHAT_PAYOUT_CURRENCY = "JMD"/);
+  assert.match(server, /currency: TEXT_CHAT_PAYOUT_CURRENCY/);
+  assert.doesNotMatch(server, /currency: profile\.country === "JM" \? "JMD" : profile\.country === "BB" \? "BBD" : "TTD"/);
+  assert.match(registrationForm, /PROFILE COUNTRY/);
+  assert.match(registrationForm, /Text-chat payout estimates are shown and cleared in JMD for launch/);
+  assert.match(fileProcessor, /JMD text-chat settlement/);
+});
+
 test("registration explains standard payout without photo ID", () => {
   assert.match(registrationForm, /standard-payout-no-id-note/);
   assert.match(registrationForm, /Standard payout is available without a photo ID/);
@@ -304,7 +313,10 @@ test("maintenance backfill is dry-run by default and can migrate legacy ID photo
   assert.match(backfillScript, /WHERE idPhoto LIKE 'data:image\/%;base64,%'/);
   assert.match(backfillScript, /verified-hash:v1:\$\{digest\}/);
   assert.match(backfillScript, /payoutVersion = metadata\.payoutVersion \|\| "c2c-payout-v5-mindwave-buyer"/);
-  assert.match(backfillScript, /rate: 10/);
+  assert.match(backfillScript, /rate: 25/);
+  assert.match(backfillScript, /maxRatePerPair: 200/);
+  assert.match(backfillScript, /currency: "JMD"/);
+  assert.match(backfillScript, /SET payoutAmount = \?, currency = \?, metadata = \?/);
   assert.doesNotMatch(backfillScript, /update\.run\(amount|units \* 0\.5|payoutRatePerUsefulLine \|\| 0\.5/);
 });
 

@@ -39,7 +39,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
   const whatsappExportHelp = "In WhatsApp, open the chat, tap More or Export Chat, choose Export Chat, select Without Media, then upload the .zip or .txt file here.";
   const hasPayoutProfile = payoutProfileComplete;
   const payoutDestination = hasPayoutProfile
-    ? `${payoutAccountInput} (${user.country === "JM" ? "JMD" : user.country === "BB" ? "BBD" : "TTD"})`
+    ? `${payoutAccountInput} (JMD text-chat settlement)`
     : "Payout setup needed before final submit";
 
   const fetchReceipt = async (datasetId: string) => {

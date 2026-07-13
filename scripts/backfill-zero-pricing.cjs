@@ -38,21 +38,21 @@ function buildPricingBackfills() {
     const units = Number(metadata.newPairsOnly || metadata.totalUsefulLines || dialogues.length || 0);
     if (!units) return [];
 
-    const amount = Number((units * 10).toFixed(2));
+    const amount = Number((units * 25).toFixed(2));
     metadata.suitabilityScore = metadata.suitabilityScore ?? 50;
-    metadata.payoutRatePerUsefulLine = metadata.payoutRatePerUsefulLine || 10;
+    metadata.payoutRatePerUsefulLine = metadata.payoutRatePerUsefulLine || 25;
     metadata.totalUsefulLines = metadata.totalUsefulLines || units;
     metadata.payoutVersion = metadata.payoutVersion || "c2c-payout-v5-mindwave-buyer";
     metadata.evaluationSummary = `${metadata.evaluationSummary || ""} Backfilled with baseline conversational pricing after launch buyer-pricing fix.`.trim();
     metadata.payout = metadata.payout || {
       version: "c2c-payout-v5-mindwave-buyer",
-      breakdown: [{ tier: "conversational", units, rate: 10, effectiveRate: 10, amount }],
+      breakdown: [{ tier: "conversational", units, rate: 25, effectiveRate: 25, amount }],
       multiplier: 1,
-      maxRatePerPair: 75,
+      maxRatePerPair: 200,
       total: amount,
     };
 
-    return [{ id: row.id, amount, currency: row.currency, metadata: JSON.stringify(metadata) }];
+    return [{ id: row.id, amount, currency: "JMD", metadata: JSON.stringify(metadata) }];
   });
 }
 
@@ -92,7 +92,7 @@ console.log(`backup=${backupPath}`);
 
 const updatePricing = db.prepare(`
   UPDATE datasets
-  SET payoutAmount = ?, metadata = ?, updatedAt = CURRENT_TIMESTAMP
+  SET payoutAmount = ?, currency = ?, metadata = ?, updatedAt = CURRENT_TIMESTAMP
   WHERE id = ?
 `);
 const updateIdPhoto = db.prepare(`
@@ -102,7 +102,7 @@ const updateIdPhoto = db.prepare(`
 `);
 
 const applyChanges = db.transaction(() => {
-  for (const item of pricingBackfills) updatePricing.run(item.amount, item.metadata, item.id);
+  for (const item of pricingBackfills) updatePricing.run(item.amount, item.currency, item.metadata, item.id);
   for (const item of idPhotoMigrations) updateIdPhoto.run(item.marker, item.userId);
 });
 

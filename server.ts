@@ -24,6 +24,7 @@ const RUNPOD_ENDPOINT_ID = process.env.RUNPOD_ENDPOINT_ID; // Oreluwa endpoint
 const WIPAY_ACCOUNT_NUMBER = process.env.WIPAY_ACCOUNT_NUMBER || "1234567";
 const WIPAY_MERCHANT_KEY = process.env.WIPAY_MERCHANT_KEY || "";
 const WIPAY_COUNTRY_CODE = process.env.WIPAY_COUNTRY_CODE || "JM";
+const TEXT_CHAT_PAYOUT_CURRENCY = "JMD";
 
 // Admin picture-password config
 const ADMIN_CLICK_SEQUENCE: string[] = JSON.parse(process.env.ADMIN_CLICK_SEQUENCE || '["V1","V3","V2","V1","V3"]');
@@ -520,7 +521,7 @@ app.post("/api/upload-json", requireSession, (req: any, res) => {
       timestamp: new Date().toISOString(),
       status: "Draft",
       payoutAmount: payout.total,
-      currency: profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD",
+      currency: TEXT_CHAT_PAYOUT_CURRENCY,
       contentHash: canonicalHash,
       metadata: {
         jsonVersion: "c2c-json-v1",
@@ -637,7 +638,7 @@ app.post("/api/submit-json-draft", requireSession, (req: any, res) => {
       timestamp,
       status: "Pending Review",
       payoutAmount,
-      currency: profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD",
+      currency: TEXT_CHAT_PAYOUT_CURRENCY,
       contentHash,
       hashVersion: "v1",
       metadata: {
@@ -1223,7 +1224,7 @@ Respond strictly in valid JSON:
     // MindWave buyer payout: JMD $25-$200 per accepted dialogue pair by value tier.
     const payoutAmount = payout.total;
     const ratePerPair = averageAcceptedRate(payout);
-    const currency = profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD";
+    const currency = TEXT_CHAT_PAYOUT_CURRENCY;
     
     const datasetId = `DS-${Date.now()}`;
     const timestampStr = new Date().toISOString();

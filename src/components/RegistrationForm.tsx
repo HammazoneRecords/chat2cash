@@ -37,10 +37,10 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
   const [error, setError] = useState("");
 
   const countries = [
-    { code: "TT", name: "Trinidad & Tobago (TTD)", flag: "🇹🇹", currency: "TTD" },
-    { code: "JM", name: "Jamaica (JMD)", flag: "🇯🇲", currency: "JMD" },
-    { code: "BB", name: "Barbados (BBD)", flag: "🇧🇧", currency: "BBD" },
-    { code: "US", name: "Cayman/International (USD)", flag: "🇰🇾", currency: "USD" },
+    { code: "TT", name: "Trinidad & Tobago", flag: "🇹🇹" },
+    { code: "JM", name: "Jamaica", flag: "🇯🇲" },
+    { code: "BB", name: "Barbados", flag: "🇧🇧" },
+    { code: "US", name: "Cayman/International", flag: "🇰🇾" },
   ];
 
   useEffect(() => {
@@ -374,7 +374,7 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
 
           {/* Country Currency Selection */}
           <div className="space-y-2">
-            <label htmlFor="reg-country" className="text-xs font-bold text-slate-300 font-mono tracking-wide block">SETTLEMENT COUNTRY</label>
+            <label htmlFor="reg-country" className="text-xs font-bold text-slate-300 font-mono tracking-wide block">PROFILE COUNTRY</label>
             <div className="relative">
               <Globe className="absolute left-3 top-3.5 w-4 h-4 text-emerald-500/60" />
               <select
@@ -390,6 +390,9 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
                 ))}
               </select>
             </div>
+            <p className="text-[11px] text-slate-500 leading-normal">
+              Text-chat payout estimates are shown and cleared in JMD for launch. Country helps with profile context and future local settlement support.
+            </p>
           </div>
 
           {/* Town Field */}

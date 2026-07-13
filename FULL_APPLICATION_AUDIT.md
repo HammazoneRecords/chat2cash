@@ -24,7 +24,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | Public ledger privacy shape | Working | `/api/reconciliation` maps rows to anonymous receipt records and returns empty `profiles`, `transactions`, `dialogues`, and `originalLinesPreview`. | Do not expose contributor PII or raw content publicly. |
 | JSON tamper resistance | Working | `validateCanonicalJson` and `/api/submit-json-draft` recompute hashes, grading, duplicate status, payout, and ownership from the session. | Continue ignoring client score, payout, role, status, and identity fields. |
 | Duplicate policy | Working | Full duplicate and all-pair duplicate paths strike cross-user duplicates; same-user full duplicate is idempotent. | Keep pre-submit warnings visible before final submit. |
-| Payout model | Working | `PAYOUT_VERSION = c2c-payout-v4-mindwave-buyer`; tier rates are capped at JMD 75 per accepted pair. | Keep copy and stored metadata versioned together. |
+| Payout model | Working | `PAYOUT_VERSION = c2c-payout-v5-mindwave-buyer`; tier rates are JMD $25-$200 per accepted pair. | Keep copy, settlement currency, and stored metadata versioned together. |
 | Release gate | Working | `corepack pnpm test:release` passed on 2026-07-13 with 43 tests, production build, and API smoke. | Keep release gate required before deploy. |
 | Dependency audit | Working | `corepack pnpm audit --audit-level moderate` returned no known vulnerabilities. | Re-run before launch/deploy. |
 
@@ -48,6 +48,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-019 | Fixed locally | Upload entry now explains upload -> review/download -> submit and includes a WhatsApp `Without Media` export checklist; unsupported/empty/invalid ZIP errors point users back to the correct export flow. | `src/components/FileProcessor.tsx`, `tests/securityInvariants.test.ts`. | Browser/mobile proof still required. |
 | UX-022 | Fixed locally | Staff invite now uses an inline email/role form with validation and one-time invite link/expiry display instead of browser prompts. | `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin staff-tab proof still required. |
 | AUD-011/UX-023 | Fixed locally | Admin payout workflow now exposes transaction state and shows ordered queue -> disburse -> proof steps; `/api/admin/payout-proof` rejects proof before disbursement. | `server.ts`, `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin payout proof still required. |
+| UX-015 | Fixed locally | Text-chat payout settlement is JMD for launch regardless of profile country, and country copy now describes profile/location context instead of currency selection. | `server.ts`, `src/components/RegistrationForm.tsx`, `src/components/FileProcessor.tsx`, `tests/securityInvariants.test.ts`. | Browser/live signup and payout preview proof still required. |
 
 ## Critical Findings
 
@@ -72,6 +73,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-012 | Medium | Audit detail | Some admin actions log limited before/after/reason data. | Staff and strike endpoints log action notes, but not all before/after state. | Standardize audit schema for actor, target, action, reason, before, after. | Audit log shows attributable before/after for moderation, staff, strikes, payout, and proof. |
 | AUD-013 | Medium | Legacy dead code | `/api/profile` returns 410 but leaves unreachable legacy creation code below return. | `server.ts` has dead code after `return res.status(410)`. | Remove dead code to reduce confusion and audit surface. | Route still returns 410; no unreachable profile creation code remains. |
 | AUD-014 | Medium | Stats semantics | Public stats use all datasets and transaction sum, not necessarily disbursed-only public payout language. | `db.ts getStats()` counts all datasets and sums all JMD transactions. | Decide if stats mean submitted, approved, or paid; align Overview/Ledger copy. | Stats labels match query semantics. |
+| AUD-030 | Medium | Country/currency clarity | Fixed locally: profile country no longer implies TT/BB/USD text-chat settlement; text-chat payout records are generated in JMD for launch. | `server.ts`; `RegistrationForm.tsx`; `FileProcessor.tsx`; invariant test. | Browser/live proof still required. |
 
 ## Frontend and UX Findings
 
@@ -124,7 +126,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | 2026-07-13 | Local release gate | `corepack pnpm test:release` -> passed typecheck, 43 tests, production build, API smoke. |
 | 2026-07-13 | AUD-005 admin exports | Added `c2c-training-export-v1` safe export contract and invariant test. |
 | 2026-07-13 | AUD-015/AUD-017 contributor return + masked account code | Added owner-scoped submissions API/UI, masked account code in nav/upload, and invariant coverage. |
-| 2026-07-13 | Payout model v4 | Raised MindWave buyer text-chat rates to JMD 10/20/30/45/60 by tier with JMD 75 max displayed rate per accepted pair. |
+| 2026-07-13 | Payout model v5 | Raised MindWave buyer text-chat rates to JMD 25/50/75/100/125 by tier with JMD 200 max displayed rate per accepted pair. |
 | 2026-07-13 | AUD-018 payout copy | Replaced escrow/legal-locking/chatbot-training-pair wording with plain payout/review labels and invariant coverage. |
 | 2026-07-13 | AUD-003/AUD-009/AUD-010 profile/config hardening | Added server-side profile validation, one-way ID verification marker storage, safe profile response shape, removed public merchant account config, and invariant coverage. |
 | 2026-07-13 | SEC-012/SEC-017/SEC-019 maintenance script | Added dry-run/apply maintenance script behavior, DB backup, transaction writes, current buyer-pricing backfill, and legacy base64 ID-photo migration coverage. |
@@ -133,3 +135,4 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | 2026-07-13 | UX-014 standard payout without ID | Added clear standard-payout/no-photo-ID copy and multiplier-only ID wording to signup. |
 | 2026-07-13 | UX-022 staff invite UX | Replaced staff invite browser prompts with an inline form, role selector, validation, and invite-link result display. |
 | 2026-07-13 | AUD-011/UX-023 payout proof order | Added admin transaction summary, ordered queue/disburse/proof UI, and server rejection for proof before disbursement. |
+| 2026-07-13 | UX-015/AUD-030 JMD settlement clarity | Text-chat payout records now use JMD for launch, profile country copy no longer implies currency conversion, and maintenance backfill writes v5 JMD baseline pricing. |
