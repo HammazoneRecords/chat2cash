@@ -56,6 +56,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | UX-019/AUD-014 | Fixed locally | Public stats now expose `totalPayoutsUnderReviewJMD` from dataset payout amounts and the landing card labels it as `Payouts Under Review`, while `totalPaidJMD` remains actual transaction-based paid totals. | `db.ts`, `src/components/LandingHero.tsx`, `tests/securityInvariants.test.ts`. | Browser/live Overview-vs-Ledger proof still required. |
 | UX-027 | Fixed locally | Removed the duplicate inline voice email form and routes voice interest through one modal waitlist path; Step 04 now reinforces that text-chat upload is the paid launch flow. | `src/components/LandingHero.tsx`, `tests/securityInvariants.test.ts`. | Browser/live landing proof still required. |
 | UX-024 | Fixed locally | Admin review evidence now includes sanitized segment snippets and per-dimension score, confidence, source, and evidence message IDs. | `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin review proof still required. |
+| SEC-018 | Fixed locally | `.env.example` now documents Chat2Cash production/local URLs, `DATA_DIR`, Better Auth URL/secret requirements, JMD WiPay country, AI provider variables, and test-account seed variables without secrets. | `.env.example`, `tests/securityInvariants.test.ts`. | Live/operator env proof still required. |
 
 ## Critical Findings
 
@@ -150,3 +151,4 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | 2026-07-13 | UX-019/AUD-014 stats semantics | Added `totalPayoutsUnderReviewJMD` and relabeled the landing metric to avoid contradicting the public ledger. |
 | 2026-07-13 | UX-027/AUD-022 voice waitlist focus | Removed the duplicate inline voice email capture and kept one modal waitlist path to preserve text-chat launch focus. |
 | 2026-07-13 | UX-024 admin evidence depth | Added sanitized segment snippets and score-dimension evidence IDs/source rows to the admin review panel. |
+| 2026-07-13 | SEC-018 env template | Updated `.env.example` for Chat2Cash production/local URLs, DATA_DIR, JMD WiPay country, Better Auth secret guidance, AI provider vars, and test seed variables. |

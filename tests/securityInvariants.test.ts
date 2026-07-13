@@ -17,6 +17,7 @@ const registrationForm = fs.readFileSync(path.join(root, "src", "components", "R
 const mySubmissions = fs.readFileSync(path.join(root, "src", "components", "MySubmissions.tsx"), "utf8");
 const reconciliationLedger = fs.readFileSync(path.join(root, "src", "components", "ReconciliationLedger.tsx"), "utf8");
 const dockerignore = fs.readFileSync(path.join(root, ".dockerignore"), "utf8");
+const envExample = fs.readFileSync(path.join(root, ".env.example"), "utf8");
 const backfillScript = fs.readFileSync(path.join(root, "scripts", "backfill-zero-pricing.cjs"), "utf8");
 
 test("processing endpoint enforces session ownership", () => {
@@ -299,6 +300,16 @@ test("public config does not expose merchant account values", () => {
   assert.match(configRoute, /aiConfigured/);
   assert.match(configRoute, /wipayCountryCode/);
   assert.doesNotMatch(configRoute, /wipayMerchantAccount|WIPAY_ACCOUNT_NUMBER|Demo Gateway/);
+});
+
+test("environment template matches Chat2Cash production and local setup", () => {
+  assert.match(envExample, /APP_URL=https:\/\/chat2cash\.mindwaveja\.com/);
+  assert.match(envExample, /BETTER_AUTH_URL=https:\/\/chat2cash\.mindwaveja\.com/);
+  assert.match(envExample, /DATA_DIR=\/opt\/mw\/chat2cash-data/);
+  assert.match(envExample, /WIPAY_COUNTRY_CODE=JM/);
+  assert.match(envExample, /TEST_ACCOUNT_PASSWORD=/);
+  assert.match(envExample, /node -e "console\.log\(require\('crypto'\)\.randomBytes\(32\)\.toString\('hex'\)\)"/);
+  assert.doesNotMatch(envExample, /purifier\.mindwaveja\.com|MY_APP_URL|WIPAY_COUNTRY_CODE="TT"|BETTER_AUTH_SECRET=generate-with/);
 });
 
 test("profile update validates fields and never returns or stores base64 ID images", () => {
