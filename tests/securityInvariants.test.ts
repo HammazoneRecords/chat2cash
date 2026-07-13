@@ -13,6 +13,7 @@ const fileProcessor = fs.readFileSync(path.join(root, "src", "components", "File
 const mySubmissions = fs.readFileSync(path.join(root, "src", "components", "MySubmissions.tsx"), "utf8");
 const reconciliationLedger = fs.readFileSync(path.join(root, "src", "components", "ReconciliationLedger.tsx"), "utf8");
 const dockerignore = fs.readFileSync(path.join(root, ".dockerignore"), "utf8");
+const backfillScript = fs.readFileSync(path.join(root, "scripts", "backfill-zero-pricing.cjs"), "utf8");
 
 test("processing endpoint enforces session ownership", () => {
   assert.match(server, /app\.post\("\/api\/process-chat", requireSession/);
@@ -210,6 +211,20 @@ test("profile update validates fields and never returns or stores base64 ID imag
   assert.match(meRoute, /sanitizeProfileForClient\(user\)/);
   assert.doesNotMatch(profileUpdate, /idPhoto: idPhoto \|\| ""/);
   assert.doesNotMatch(profileHelpers, /\.\.\.safeProfile,\s*idPhoto:/);
+});
+
+test("maintenance backfill is dry-run by default and can migrate legacy ID photos", () => {
+  assert.match(backfillScript, /const apply = process\.argv\.includes\("--apply"\)/);
+  assert.match(backfillScript, /mode=\$\{apply \? "apply" : "dry-run"\}/);
+  assert.match(backfillScript, /No changes written\. Re-run with --apply/);
+  assert.match(backfillScript, /function backupDatabase\(\)/);
+  assert.match(backfillScript, /bak-maintenance/);
+  assert.match(backfillScript, /db\.transaction/);
+  assert.match(backfillScript, /WHERE idPhoto LIKE 'data:image\/%;base64,%'/);
+  assert.match(backfillScript, /verified-hash:v1:\$\{digest\}/);
+  assert.match(backfillScript, /payoutVersion = metadata\.payoutVersion \|\| "c2c-payout-v4-mindwave-buyer"/);
+  assert.match(backfillScript, /rate: 10/);
+  assert.doesNotMatch(backfillScript, /update\.run\(amount|units \* 0\.5|payoutRatePerUsefulLine \|\| 0\.5/);
 });
 
 test("docker context excludes secrets, databases, logs, and local artifacts", () => {

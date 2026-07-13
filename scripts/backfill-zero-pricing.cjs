@@ -1,42 +1,111 @@
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
 const Database = require("better-sqlite3");
 
-const dbPath = process.env.DB_PATH || "/data/chat2cash.db";
+const apply = process.argv.includes("--apply");
+const dbPath = process.env.DB_PATH || path.join(process.env.DATA_DIR || "/data", "chat2cash.db");
+
+if (!fs.existsSync(dbPath)) {
+  console.error(`Database not found: ${dbPath}`);
+  process.exit(1);
+}
+
 const db = new Database(dbPath);
 
-const rows = db.prepare(`
-  SELECT id, metadata, dialogues, currency
-  FROM datasets
-  WHERE status = ?
-    AND COALESCE(payoutAmount, 0) = 0
-`).all("Pending Review");
+function backupDatabase() {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupPath = `${dbPath}.bak-maintenance-${stamp}`;
+  fs.copyFileSync(dbPath, backupPath);
+  for (const suffix of ["-wal", "-shm"]) {
+    const sidecar = `${dbPath}${suffix}`;
+    if (fs.existsSync(sidecar)) fs.copyFileSync(sidecar, `${backupPath}${suffix}`);
+  }
+  return backupPath;
+}
 
-const update = db.prepare(`
+function buildPricingBackfills() {
+  const rows = db.prepare(`
+    SELECT id, metadata, dialogues, currency
+    FROM datasets
+    WHERE status = ?
+      AND COALESCE(payoutAmount, 0) = 0
+  `).all("Pending Review");
+
+  return rows.flatMap((row) => {
+    const metadata = JSON.parse(row.metadata || "{}");
+    const dialogues = JSON.parse(row.dialogues || "[]");
+    const units = Number(metadata.newPairsOnly || metadata.totalUsefulLines || dialogues.length || 0);
+    if (!units) return [];
+
+    const amount = Number((units * 10).toFixed(2));
+    metadata.suitabilityScore = metadata.suitabilityScore ?? 50;
+    metadata.payoutRatePerUsefulLine = metadata.payoutRatePerUsefulLine || 10;
+    metadata.totalUsefulLines = metadata.totalUsefulLines || units;
+    metadata.payoutVersion = metadata.payoutVersion || "c2c-payout-v4-mindwave-buyer";
+    metadata.evaluationSummary = `${metadata.evaluationSummary || ""} Backfilled with baseline conversational pricing after launch buyer-pricing fix.`.trim();
+    metadata.payout = metadata.payout || {
+      version: "c2c-payout-v4-mindwave-buyer",
+      breakdown: [{ tier: "conversational", units, rate: 10, effectiveRate: 10, amount }],
+      multiplier: 1,
+      maxRatePerPair: 75,
+      total: amount,
+    };
+
+    return [{ id: row.id, amount, currency: row.currency, metadata: JSON.stringify(metadata) }];
+  });
+}
+
+function buildIdPhotoMigrations() {
+  return db.prepare(`
+    SELECT userId, idPhoto
+    FROM profiles
+    WHERE idPhoto LIKE 'data:image/%;base64,%'
+  `).all().map((row) => {
+    const base64 = String(row.idPhoto).split(",")[1] || "";
+    const digest = crypto.createHash("sha256").update(base64).digest("hex");
+    return { userId: row.userId, marker: `verified-hash:v1:${digest}` };
+  });
+}
+
+const pricingBackfills = buildPricingBackfills();
+const idPhotoMigrations = buildIdPhotoMigrations();
+
+console.log(`mode=${apply ? "apply" : "dry-run"}`);
+console.log(`db=${dbPath}`);
+console.log(`zero_price_datasets=${pricingBackfills.length}`);
+for (const item of pricingBackfills) {
+  console.log(`pricing ${item.id} -> ${item.amount} ${item.currency || "JMD"}`);
+}
+console.log(`legacy_base64_id_photos=${idPhotoMigrations.length}`);
+for (const item of idPhotoMigrations) {
+  console.log(`idPhoto ${item.userId} -> ${item.marker.slice(0, 28)}...`);
+}
+
+if (!apply) {
+  console.log("No changes written. Re-run with --apply after reviewing the dry-run output.");
+  process.exit(0);
+}
+
+const backupPath = backupDatabase();
+console.log(`backup=${backupPath}`);
+
+const updatePricing = db.prepare(`
   UPDATE datasets
   SET payoutAmount = ?, metadata = ?, updatedAt = CURRENT_TIMESTAMP
   WHERE id = ?
 `);
+const updateIdPhoto = db.prepare(`
+  UPDATE profiles
+  SET idPhoto = ?, updatedAt = CURRENT_TIMESTAMP
+  WHERE userId = ?
+`);
 
-let changed = 0;
-for (const row of rows) {
-  const metadata = JSON.parse(row.metadata || "{}");
-  const dialogues = JSON.parse(row.dialogues || "[]");
-  const units = Number(metadata.newPairsOnly || dialogues.length || 0);
-  if (!units) continue;
+const applyChanges = db.transaction(() => {
+  for (const item of pricingBackfills) updatePricing.run(item.amount, item.metadata, item.id);
+  for (const item of idPhotoMigrations) updateIdPhoto.run(item.marker, item.userId);
+});
 
-  const amount = Number((units * 0.5).toFixed(2));
-  metadata.suitabilityScore = metadata.suitabilityScore ?? 50;
-  metadata.payoutRatePerUsefulLine = metadata.payoutRatePerUsefulLine || 0.5;
-  metadata.totalUsefulLines = metadata.totalUsefulLines || units;
-  metadata.evaluationSummary = `${metadata.evaluationSummary || ""} Backfilled with baseline conversational pricing after launch pricing fix.`.trim();
-  metadata.payout = metadata.payout || {
-    breakdown: [{ tier: "conversational", units, rate: 0.5, amount }],
-    multiplier: 1,
-    total: amount,
-  };
-
-  update.run(amount, JSON.stringify(metadata), row.id);
-  changed++;
-  console.log(`backfilled ${row.id} ${amount} ${row.currency}`);
-}
-
-console.log(`changed=${changed}`);
+applyChanges();
+console.log(`changed_pricing=${pricingBackfills.length}`);
+console.log(`changed_id_photos=${idPhotoMigrations.length}`);
