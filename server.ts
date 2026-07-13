@@ -38,6 +38,7 @@ const AI_PROVIDER = RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID
   : DEEPSEEK_API_KEY
     ? "deepseek"
     : "local";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 console.log(`[AI] Evaluation provider: ${AI_PROVIDER.toUpperCase()}`);
 const MAX_AI_PROMPT_CHARS = 24000;
@@ -106,9 +107,67 @@ async function runAIEvaluation(prompt: string): Promise<any | null> {
 // SQLite database (chat2cash.db) initialized in db.ts with schema and WAL mode
 // All data operations are transactional and concurrent-safe
 
-// Support parsing JSON & URL encoded payloads up to 50MB
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
+  if (IS_PRODUCTION) {
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    );
+  }
+  next();
+});
+
+function bodyLimitForPath(pathname: string) {
+  if (["/api/process-chat", "/api/upload-json", "/api/submit-json-draft"].includes(pathname)) return "50mb";
+  if (pathname === "/api/profile/update") return "6mb";
+  return "1mb";
+}
+
+function formatBodyParserError(error: any) {
+  if (error?.type === "entity.too.large") return { status: 413, message: "Payload is too large for this endpoint." };
+  return { status: 400, message: "Invalid request body." };
+}
+
+app.use((req, res, next) => {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
+  const limit = bodyLimitForPath(req.path);
+  express.json({ limit })(req, res, (jsonError) => {
+    if (jsonError) {
+      const formatted = formatBodyParserError(jsonError);
+      return res.status(formatted.status).json({ error: formatted.message });
+    }
+    express.urlencoded({ limit, extended: true })(req, res, (urlError) => {
+      if (urlError) {
+        const formatted = formatBodyParserError(urlError);
+        return res.status(formatted.status).json({ error: formatted.message });
+      }
+      next();
+    });
+  });
+});
+
+const configuredOrigins = [
+  process.env.APP_URL,
+  process.env.BETTER_AUTH_URL,
+  "http://localhost:4001",
+  "http://127.0.0.1:4001",
+].filter(Boolean) as string[];
+
+app.use((req, res, next) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+  const origin = req.get("origin");
+  if (!origin) return next();
+  const hostOrigin = `${req.protocol}://${req.get("host")}`;
+  if (origin === hostOrigin || configuredOrigins.includes(origin)) return next();
+  return res.status(403).json({ error: "Invalid request origin." });
+});
 
 // Simple rate limiter (in-memory; not suitable for multi-process)
 // For production: use redis-rate-limiter or equivalent
@@ -1050,7 +1109,7 @@ Respond strictly in valid JSON:
 
     const tierInputs = buildDialoguePayoutInputs(dialogues, grades);
     const payout = calculateTieredPayout(tierInputs, (profile as any).demographicOptIn ? 2 : 1);
-    // MindWave buyer payout: JMD $2-$20 per accepted dialogue pair by value tier.
+    // MindWave buyer payout: JMD $5-$50 per accepted dialogue pair by value tier.
     const payoutAmount = payout.total;
     const ratePerPair = averageAcceptedRate(payout);
     const currency = profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD";
@@ -1333,6 +1392,10 @@ app.get("/api/my-receipt/:datasetId", requireSession, (req: any, res) => {
 
 // ── Admin: Picture-password verify ────────────────────────────────────────
 app.post("/api/admin/picture-verify", (req, res) => {
+  if (IS_PRODUCTION) {
+    return res.status(404).json({ error: "Legacy admin auth is disabled." });
+  }
+
   const ip = (req.headers["x-forwarded-for"] as string || req.socket.remoteAddress || "unknown").split(",")[0].trim();
   const now = Date.now();
 
@@ -1369,6 +1432,10 @@ app.post("/api/admin/picture-verify", (req, res) => {
 
 // ── Admin: Passphrase verify + session creation ────────────────────────────
 app.post("/api/admin/auth", async (req, res) => {
+  if (IS_PRODUCTION) {
+    return res.status(404).json({ error: "Legacy admin auth is disabled." });
+  }
+
   const { tempToken, passphrase } = req.body;
   const now = Date.now();
 

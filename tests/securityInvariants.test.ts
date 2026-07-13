@@ -9,6 +9,7 @@ const landing = fs.readFileSync(path.join(root, "src", "components", "LandingHer
 const adminDashboard = fs.readFileSync(path.join(root, "src", "components", "AdminDashboard.tsx"), "utf8");
 const adminLogin = fs.readFileSync(path.join(root, "src", "components", "AdminLogin.tsx"), "utf8");
 const fileProcessor = fs.readFileSync(path.join(root, "src", "components", "FileProcessor.tsx"), "utf8");
+const dockerignore = fs.readFileSync(path.join(root, ".dockerignore"), "utf8");
 
 test("processing endpoint enforces session ownership", () => {
   assert.match(server, /app\.post\("\/api\/process-chat", requireSession/);
@@ -99,6 +100,42 @@ test("admin sign-in uses Better Auth and enforces an admin role check", () => {
   assert.match(adminLogin, /authClient\.signIn\.email/);
   assert.match(adminLogin, /fetch\("\/api\/admin\/staff"/);
   assert.match(adminLogin, /This account does not have admin access/);
+});
+
+test("legacy admin unlock is disabled in production", () => {
+  const pictureSection = server.slice(
+    server.indexOf('app.post("/api/admin/picture-verify"'),
+    server.indexOf("// ── Admin: Passphrase verify"),
+  );
+  const passphraseSection = server.slice(
+    server.indexOf('app.post("/api/admin/auth"'),
+    server.indexOf("app.post(\"/api/staff/invite/accept\""),
+  );
+  assert.match(pictureSection, /if \(IS_PRODUCTION\)/);
+  assert.match(passphraseSection, /if \(IS_PRODUCTION\)/);
+  assert.match(adminLogin, /showLegacyAdminUnlock/);
+  assert.match(adminLogin, /VITE_ENABLE_LEGACY_ADMIN_AUTH/);
+});
+
+test("request body limits are route-specific and security headers are present", () => {
+  assert.doesNotMatch(server, /app\.use\(express\.json\(\{ limit: "50mb" \}\)\)/);
+  assert.match(server, /function bodyLimitForPath/);
+  assert.match(server, /"\/api\/process-chat", "\/api\/upload-json", "\/api\/submit-json-draft"/);
+  assert.match(server, /if \(pathname === "\/api\/profile\/update"\) return "6mb"/);
+  assert.match(server, /return "1mb"/);
+  assert.match(server, /X-Content-Type-Options/);
+  assert.match(server, /Content-Security-Policy/);
+  assert.match(server, /Invalid request origin/);
+});
+
+test("docker context excludes secrets, databases, logs, and local artifacts", () => {
+  assert.match(dockerignore, /^\.env$/m);
+  assert.match(dockerignore, /^\*\.db$/m);
+  assert.match(dockerignore, /^\*\.db-wal$/m);
+  assert.match(dockerignore, /^node_modules$/m);
+  assert.match(dockerignore, /^\.codex-check$/m);
+  assert.match(dockerignore, /^\.codex-e2e$/m);
+  assert.match(dockerignore, /^nul$/m);
 });
 
 test("canonical JSON export excludes identity and includes review metadata", () => {

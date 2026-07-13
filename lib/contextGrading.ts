@@ -1,6 +1,6 @@
 export const SEGMENTATION_VERSION = "c2c-segmentation-v1";
 export const EVALUATOR_VERSION = "c2c-evaluator-v1";
-export const PAYOUT_VERSION = "c2c-payout-v2-mindwave-buyer";
+export const PAYOUT_VERSION = "c2c-payout-v3-launch-buyer";
 
 export type NormalizedMessage = {
   index: number;
@@ -150,15 +150,15 @@ export function detectContextSignals(messages: NormalizedMessage[]): ContextSign
 export type PayoutTier = "instructional" | "contextual" | "language" | "creative" | "conversational" | "rejected";
 
 export const PAYOUT_RATES: Record<PayoutTier, number> = {
-  instructional: 15,
-  contextual: 5,
-  language: 8,
-  creative: 12,
-  conversational: 2,
+  instructional: 35,
+  contextual: 12,
+  language: 18,
+  creative: 28,
+  conversational: 5,
   rejected: 0,
 };
 
-export const MAX_PAYOUT_RATE_PER_PAIR = 20;
+export const MAX_PAYOUT_RATE_PER_PAIR = 50;
 
 export function calculateTieredPayout(tiers: Array<{ tier: PayoutTier; units: number }>, multiplier = 1) {
   const breakdown = tiers.map(item => ({

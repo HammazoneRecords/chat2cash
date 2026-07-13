@@ -28,6 +28,15 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | Release gate | Working | `corepack pnpm test:release` passed on 2026-07-13. | Keep release gate required before deploy. |
 | Dependency audit | Working | `corepack pnpm audit --audit-level moderate` returned no known vulnerabilities. | Re-run before launch/deploy. |
 
+## Post-Audit Fix Progress
+
+| ID | Status | Fix | Evidence | Remaining work |
+|---|---|---|---|---|
+| AUD-001 | Fixed for production | Legacy picture/passphrase endpoints return disabled in production and the production admin UI hides the legacy unlock unless explicitly enabled. | `server.ts`, `AdminLogin.tsx`, `tests/securityInvariants.test.ts`. | Remove the legacy dev-only code entirely after staff login is fully proven live. |
+| AUD-002 | Fixed | Added `.dockerignore` for env files, SQLite DBs, WAL/SHM, logs, node_modules, `.codex-*`, `nul`, archives, and temp outputs. | `.dockerignore`, `tests/securityInvariants.test.ts`. | Inspect production image after next VPS build. |
+| AUD-004 | Fixed | Replaced global 50MB parsing with 1MB default, 6MB profile update limit, and 50MB upload/JSON submit route limits. | `server.ts`, `tests/securityInvariants.test.ts`. | Add payload-size API smoke tests. |
+| AUD-006 | Partially fixed | Added baseline headers, production CSP, and same-origin guard for state-changing requests. | `server.ts`, `tests/securityInvariants.test.ts`. | Add browser/API proof for cross-site POST rejection and decide whether CSRF tokens are required beyond origin checks. |
+
 ## Critical Findings
 
 | ID | Severity | Area | Finding | Evidence | Risk | Recommended fix | Acceptance check |

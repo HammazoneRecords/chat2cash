@@ -122,7 +122,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
           transition={{ delay: 0.2, duration: 0.8 }}
           className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed"
         >
-          Convert your text chat threads into clean, instruction-optimized training samples for custom LLM models. Your browser extracts the file, then the server temporarily sanitizes and scores the text without storing raw source lines. Get rewarded via{" "}
+          Convert your text chat threads into clean, instruction-optimized training samples for custom LLM models. MindWave buys accepted anonymized chat pairs after privacy review, scoring, and duplicate checks. Get paid via{" "}
           <span className="font-semibold text-emerald-400">WiPay Caribbean</span>.
         </motion.p>
 
@@ -136,7 +136,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
           <div className="px-6 py-3 bg-[#070b14] border border-slate-800 rounded-2xl text-center min-w-[160px]">
             <div className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-widest mb-1">💬 Text Chats</div>
             <div className="flex items-center gap-2">
-              <div className="text-lg font-bold text-white">$2 – $20 JMD</div>
+              <div className="text-lg font-bold text-white">$5 – $50 JMD</div>
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5">per accepted pair · bonus capped</div>
           </div>
@@ -239,10 +239,10 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
           <div className="p-3 rounded-xl bg-teal-950/60 text-teal-400 w-fit border border-teal-900/40">
             <DollarSign className="w-5 h-5" />
           </div>
-          <h3 className="text-md sm:text-lg font-display font-bold text-white">Linguistic Density Valuation</h3>
-          <p className="text-sm text-slate-400 leading-relaxed">
-            Our AI evaluation engine gauges context structure, response quality, and informative density to calculate real-time reward tokens.
-          </p>
+            <h3 className="text-md sm:text-lg font-display font-bold text-white">MindWave Buyer Pricing</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">
+            We buy accepted anonymized chat pairs by training value: useful context, natural language variation, Patois/code-switching, creative insight, and task-solving quality.
+            </p>
         </div>
 
         <div className="bg-[#080d19]/80 p-6 sm:p-7 rounded-2xl border border-amber-950/30 bg-amber-950/5 hover:border-amber-500/20 transition-all space-y-4">
@@ -267,12 +267,12 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               How Your Payout is Calculated
             </h3>
             <p className="text-slate-400 text-sm max-w-2xl mx-auto leading-relaxed">
-              Your compensation is strictly based on the quality and volume of instruction-following pairs extracted from your conversation. Each dialogue turn is evaluated by our AI for its training utility.
+              MindWave buys accepted anonymized chat pairs based on quality, context, language value, and duplicate safety. Each dialogue turn is scored for training utility before it enters payout review.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 pt-2">
               <div className="text-center">
                 <div className="flex items-center gap-2">
-                  <div className="text-2xl font-bold font-mono text-emerald-400">$2 – $20 JMD</div>
+                  <div className="text-2xl font-bold font-mono text-emerald-400">$5 – $50 JMD</div>
                 </div>
                 <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Per accepted chat pair</div>
               </div>
@@ -288,7 +288,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               </div>
             </div>
             <div className="text-[11px] text-slate-500 font-mono pt-1">
-              Text rates: <span className="text-slate-400">$2-$20 JMD per accepted chat pair, based on usefulness, context, and language value.</span><br />
+              Text rates: <span className="text-slate-400">$5-$50 JMD per accepted chat pair, based on usefulness, context, and language value.</span><br />
               Currency guide: <span className="text-slate-400">JMD 1,000 ≈ TTD 46 ≈ BBD 8.80</span> &nbsp;·&nbsp; Rates updated monthly
             </div>
           </div>
@@ -302,7 +302,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               <div className="bg-[#050810] rounded-2xl border border-slate-800 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-900/60">
                   <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wide">Short Exchange</span>
-                  <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-900/30 px-2 py-0.5 rounded-full">Total ~$1.40 JMD</span>
+                  <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-900/30 px-2 py-0.5 rounded-full">Total $10 JMD</span>
                 </div>
                 <div className="p-4 space-y-3">
                   {/* Turn 1 */}
@@ -315,7 +315,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                       <span className="text-[9px] font-bold font-mono text-emerald-600 bg-emerald-950/40 border border-emerald-900/30 px-1.5 py-0.5 rounded shrink-0 mt-0.5">REPLY</span>
                       <div className="flex-1 flex items-start justify-between gap-2">
                         <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"god alone know."</p>
-                        <span className="text-[9px] font-mono font-bold text-amber-500 shrink-0">$0.60</span>
+                        <span className="text-[9px] font-mono font-bold text-amber-500 shrink-0">$5</span>
                       </div>
                     </div>
                   </div>
@@ -331,7 +331,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                       <span className="text-[9px] font-bold font-mono text-emerald-600 bg-emerald-950/40 border border-emerald-900/30 px-1.5 py-0.5 rounded shrink-0 mt-0.5">REPLY</span>
                       <div className="flex-1 flex items-start justify-between gap-2">
                         <p className="text-xs text-slate-300 font-mono leading-relaxed italic">"Nuh seh suuh mayyneeee, a just how di ting come dung"</p>
-                        <span className="text-[9px] font-mono font-bold text-amber-500 shrink-0">$0.80</span>
+                        <span className="text-[9px] font-mono font-bold text-amber-500 shrink-0">$5</span>
                       </div>
                     </div>
                   </div>
@@ -346,7 +346,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-900/20 bg-emerald-950/20">
                   <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wide">Rich Exchange</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-900/40 px-2 py-0.5 rounded-full">$8 JMD</span>
+                    <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-900/40 px-2 py-0.5 rounded-full">$50 JMD</span>
                     <span className="text-[9px] font-black text-emerald-300 bg-emerald-900/50 border border-emerald-700/50 px-1.5 py-0.5 rounded-full tracking-widest">×2</span>
                   </div>
                 </div>
@@ -361,7 +361,7 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
                   </div>
                   <div className="pt-1 border-t border-emerald-900/20 space-y-0.5">
                     <span className="text-[9px] text-emerald-700 font-mono block">High density — real question, actionable advice, Patois-authentic</span>
-                    <span className="text-[9px] text-emerald-600/70 font-mono block">2× demographic multiplier applied · base rate $4 JMD × 2 = $8 JMD this turn</span>
+                    <span className="text-[9px] text-emerald-600/70 font-mono block">2× verified multiplier applied · base rate $35 JMD capped at $50 JMD this turn</span>
                   </div>
                 </div>
               </div>
