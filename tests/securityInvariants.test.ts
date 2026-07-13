@@ -142,6 +142,18 @@ test("moderation decisions retain before and after state and expose evidence", (
   assert.match(adminDashboard, /Payout tiers/);
 });
 
+test("admin staff invites use a form instead of browser prompts", () => {
+  assert.doesNotMatch(adminDashboard, /window\.prompt/);
+  assert.match(adminDashboard, /staff-invite-form/);
+  assert.match(adminDashboard, /staff-invite-email/);
+  assert.match(adminDashboard, /staff-invite-role/);
+  assert.match(adminDashboard, /btn-staff-invite-submit/);
+  assert.match(adminDashboard, /staff-invite-result/);
+  assert.match(adminDashboard, /expiresInHours/);
+  assert.match(adminDashboard, /\/staff-invite\?token=/);
+  assert.match(adminDashboard, /Enter a valid staff email/);
+});
+
 test("admin sign-in uses Better Auth and enforces an admin role check", () => {
   assert.match(adminLogin, /authClient\.signIn\.email/);
   assert.match(adminLogin, /fetch\("\/api\/admin\/staff"/);

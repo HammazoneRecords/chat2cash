@@ -21,6 +21,11 @@ export default function AdminDashboard() {
   const [staff, setStaff] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [receiptInputs, setReceiptInputs] = useState<Record<string, string>>({});
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"moderator" | "admin">("moderator");
+  const [inviteResult, setInviteResult] = useState<any>(null);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
   const [expandedDatasetId, setExpandedDatasetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -129,14 +134,31 @@ export default function AdminDashboard() {
   };
 
   const inviteStaff = async () => {
-    const email = window.prompt("Staff email");
-    const role = window.prompt("Role: moderator or admin", "moderator");
-    if (!email || !role) return;
-    await fetch("/api/admin/staff/invite", {
-      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-      body: JSON.stringify({ email, role }),
-    });
-    load();
+    setInviteError("");
+    setInviteResult(null);
+    const email = inviteEmail.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setInviteError("Enter a valid staff email.");
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      const res = await fetch("/api/admin/staff/invite", {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ email, role: inviteRole }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Staff invite failed.");
+      setInviteResult(result.invite);
+      setInviteEmail("");
+      setInviteRole("moderator");
+      load();
+    } catch (err: any) {
+      setInviteError(err?.message || "Staff invite failed.");
+    } finally {
+      setInviteLoading(false);
+    }
   };
 
   const staffAction = async (path: string, userId: string, body: any = {}) => {
@@ -382,7 +404,46 @@ export default function AdminDashboard() {
 
         {!loading && tab === "staff" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button onClick={inviteStaff} style={btnStyle("#14532d", "#86efac")}>Invite Staff Member</button>
+            <div id="staff-invite-form" style={{ background: "#080d1a", border: "1px solid #1e293b", borderRadius: 10, padding: "14px 16px", display: "grid", gap: 10 }}>
+              <div>
+                <div style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>Invite staff member</div>
+                <div style={{ color: "#64748b", fontSize: 12, marginTop: 3 }}>Creates a single-use invite link that expires in 24 hours.</div>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <input
+                  id="staff-invite-email"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  placeholder="staff@example.com"
+                  style={{ ...inputStyle, flex: "1 1 220px" }}
+                />
+                <select
+                  id="staff-invite-role"
+                  value={inviteRole}
+                  onChange={(event) => setInviteRole(event.target.value as "moderator" | "admin")}
+                  style={{ ...inputStyle, flex: "1 1 150px" }}
+                >
+                  <option value="moderator">Moderator</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <button
+                  id="btn-staff-invite-submit"
+                  onClick={inviteStaff}
+                  disabled={inviteLoading}
+                  style={btnStyle("#14532d", "#86efac")}
+                >
+                  {inviteLoading ? "Creating..." : "Create Invite"}
+                </button>
+              </div>
+              {inviteError && <div style={{ color: "#fca5a5", fontSize: 12 }}>{inviteError}</div>}
+              {inviteResult && (
+                <div id="staff-invite-result" style={{ background: "#06120c", border: "1px solid #14532d", borderRadius: 8, padding: 10, color: "#bbf7d0", fontSize: 12 }}>
+                  <div style={{ fontWeight: 800, marginBottom: 4 }}>{inviteResult.email} invited as {inviteResult.role}. Expires in {inviteResult.expiresInHours} hours.</div>
+                  <div style={{ fontFamily: "monospace", overflowWrap: "anywhere" }}>{`${window.location.origin}/staff-invite?token=${inviteResult.token}`}</div>
+                </div>
+              )}
+            </div>
             {staff.map((member: any) => (
               <div key={member.id} style={{ background: "#080d1a", border: "1px solid #1e293b", borderRadius: 10, padding: "14px 16px", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div>
@@ -436,3 +497,13 @@ function btnStyle(bg: string, color: string) {
     borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" as const,
   };
 }
+
+const inputStyle = {
+  background: "#050810",
+  border: "1px solid #1e293b",
+  borderRadius: 8,
+  color: "#e2e8f0",
+  fontSize: 12,
+  padding: "8px 10px",
+  minWidth: 0,
+};
