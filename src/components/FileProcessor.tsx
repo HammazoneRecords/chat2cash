@@ -455,7 +455,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
               
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">WIPAY ESTIMATE ESCROW</span>
+                  <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">Estimated Payout</span>
                   <span className={`text-[10px] px-2.5 py-1 rounded-full font-mono font-bold uppercase tracking-wider ${
                     activeDataset.status === "Pending Review" 
                       ? "bg-amber-950/70 text-amber-300 border border-amber-900/50" 
@@ -473,7 +473,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                     <span>{activeDataset.payoutAmount.toLocaleString()}</span>
                   </div>
                   <p className="text-xs text-slate-400 leading-normal">
-                    Calculated rate: <span className="font-bold text-emerald-400">${activeDataset.metadata.payoutRatePerUsefulLine}</span> per validated chatbot training pair.
+                    Average accepted rate: <span className="font-bold text-emerald-400">${activeDataset.metadata.payoutRatePerUsefulLine}</span> per accepted chat pair.
                   </p>
                 </div>
 
@@ -483,7 +483,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                     <strong className="font-mono text-white">{user.wipayAccount}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Legal Audit Locking:</span>
+                    <span className="text-slate-500">Review Window:</span>
                     <span className="font-mono font-bold text-amber-300 flex items-center gap-1">7 - 14 Days</span>
                   </div>
                 </div>

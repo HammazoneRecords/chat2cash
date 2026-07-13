@@ -35,17 +35,17 @@ export default function ReconciliationLedger() {
     fetchLedgerData();
   }, []);
 
-  // Simulates a back-office dataset review approval to release funds immediately
+  // Admin-only back-office payout confirmation.
   const handleApproveDisbursement = async (datasetId: string) => {
     try {
-      setStatusMsg(`Initiating release of escrow holdings for ${datasetId}...`);
+      setStatusMsg(`Marking payout as disbursed for ${datasetId}...`);
       const res = await fetch("/api/admin/payout-approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ datasetId }),
       });
       if (res.ok) {
-        setStatusMsg("Escrow released successfully! Fund state updated on WiPay Ledger.");
+        setStatusMsg("Payout marked disbursed. Add or confirm receipt proof in the admin panel.");
         await fetchLedgerData();
       }
     } catch (e) {
@@ -187,8 +187,8 @@ export default function ReconciliationLedger() {
                 <th className="py-4 px-6">Dataset Hash / Date</th>
                 <th className="py-4 px-4">Anonymous Receipt</th>
                 <th className="py-4 px-4 text-center">Linguistic Quality Matrix</th>
-                <th className="py-4 px-4">Escrow Status</th>
-                <th className="py-4 px-6 text-right">WiPay Ledger Log</th>
+                <th className="py-4 px-4">Payout Status</th>
+                <th className="py-4 px-6 text-right">Payout Record</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-850 bg-[#070b14]/50">
@@ -231,7 +231,7 @@ export default function ReconciliationLedger() {
                         <span className="text-[9px] text-slate-500 block">suitability</span>
                       </div>
                       <div className="text-slate-400 text-[10px] font-medium block">
-                        {d.metadata.totalUsefulLines} / {d.metadata.totalLinesAnalyzed} fine-tuning segments
+                        {d.metadata.totalUsefulLines} / {d.metadata.totalLinesAnalyzed} accepted chat pairs
                       </div>
                     </td>
 

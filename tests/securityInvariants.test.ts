@@ -11,6 +11,7 @@ const adminDashboard = fs.readFileSync(path.join(root, "src", "components", "Adm
 const adminLogin = fs.readFileSync(path.join(root, "src", "components", "AdminLogin.tsx"), "utf8");
 const fileProcessor = fs.readFileSync(path.join(root, "src", "components", "FileProcessor.tsx"), "utf8");
 const mySubmissions = fs.readFileSync(path.join(root, "src", "components", "MySubmissions.tsx"), "utf8");
+const reconciliationLedger = fs.readFileSync(path.join(root, "src", "components", "ReconciliationLedger.tsx"), "utf8");
 const dockerignore = fs.readFileSync(path.join(root, ".dockerignore"), "utf8");
 
 test("processing endpoint enforces session ownership", () => {
@@ -89,6 +90,18 @@ test("contributors can return to owned submission receipts without raw content",
   assert.doesNotMatch(fileProcessor, /Active Verification Key/);
   assert.match(mySubmissions, /fetch\("\/api\/my-submissions"/);
   assert.match(mySubmissions, /Raw chat lines and full anonymized dialogues are not returned here/);
+});
+
+test("contributor payout copy uses plain buyer-flow language", () => {
+  assert.match(fileProcessor, /Estimated Payout/);
+  assert.match(fileProcessor, /Average accepted rate/);
+  assert.match(fileProcessor, /per accepted chat pair/);
+  assert.match(fileProcessor, /Review Window/);
+  assert.match(reconciliationLedger, /Payout Status/);
+  assert.match(reconciliationLedger, /Payout Record/);
+  assert.match(reconciliationLedger, /accepted chat pairs/);
+  assert.doesNotMatch(fileProcessor, /WIPAY ESTIMATE ESCROW|validated chatbot training pair|Legal Audit Locking|CLAIM DISBURSEMENT/);
+  assert.doesNotMatch(reconciliationLedger, /escrow holdings|Escrow released|Escrow Status|WiPay Ledger Log|fine-tuning segments/);
 });
 
 test("staff lifecycle routes enforce role boundaries and disabled sessions", () => {
