@@ -967,12 +967,15 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                             Category: <strong className="text-white bg-[#0e172a] px-2 py-0.5 rounded border border-slate-850">{item.category}</strong>
                           </span>
                           <span>
-                            Fine-Tuning Density Rating: <strong className={item.isUseful ? "text-emerald-400" : "text-amber-500"}>{item.score}%</strong>
+                            Review Score: <strong className={item.isUseful ? "text-emerald-400" : "text-amber-500"}>{item.score}%</strong>
                           </span>
                           <span className={`px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-[8px] ${
                             item.isUseful ? "bg-emerald-950/50 text-emerald-450 border border-emerald-900/30" : "bg-slate-900 text-slate-500"
                           }`}>
-                            {item.isUseful ? "Recommended Training Node" : "Noise Segment"}
+                            {item.isUseful ? "Accepted for payout review" : "Low-value / needs context"}
+                          </span>
+                          <span className="basis-full text-[10px] leading-relaxed text-slate-500 normal-case tracking-normal">
+                            {item.explanation || (item.isUseful ? "This turn has enough context to review for payout." : "This turn may be too short, repetitive, or missing context.")}
                           </span>
                         </div>
                       </div>
@@ -1009,7 +1012,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                             <span className={`inline-block px-2.5 py-0.5 rounded-full text-[8px] uppercase font-bold tracking-wider ${
                               line.isUseful ? "bg-emerald-950 text-emerald-400 border border-emerald-900/30" : "bg-slate-900 text-slate-550"
                             }`}>
-                              {line.isUseful ? "Useful turn" : "Chit-Chat Noise"}
+                              {line.isUseful ? "Useful turn" : "Low-value / needs context"}
                             </span>
                           </td>
                         </tr>

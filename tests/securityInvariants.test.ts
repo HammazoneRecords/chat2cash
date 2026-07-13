@@ -130,11 +130,22 @@ test("contributor payout copy uses plain buyer-flow language", () => {
   assert.match(fileProcessor, /Average accepted rate/);
   assert.match(fileProcessor, /per accepted chat pair/);
   assert.match(fileProcessor, /Review Window/);
+  assert.match(fileProcessor, /Review Score/);
+  assert.match(fileProcessor, /Accepted for payout review/);
+  assert.match(fileProcessor, /Low-value \/ needs context/);
   assert.match(reconciliationLedger, /Payout Status/);
   assert.match(reconciliationLedger, /Payout Record/);
   assert.match(reconciliationLedger, /accepted chat pairs/);
-  assert.doesNotMatch(fileProcessor, /WIPAY ESTIMATE ESCROW|validated chatbot training pair|Legal Audit Locking|CLAIM DISBURSEMENT/);
+  assert.doesNotMatch(fileProcessor, /WIPAY ESTIMATE ESCROW|validated chatbot training pair|Legal Audit Locking|CLAIM DISBURSEMENT|Fine-Tuning Density Rating|Recommended Training Node|Noise Segment|Chit-Chat Noise/);
   assert.doesNotMatch(reconciliationLedger, /escrow holdings|Escrow released|Escrow Status|WiPay Ledger Log|fine-tuning segments/);
+});
+
+test("Patois and code-switching are not rejected for being dialect-heavy", () => {
+  assert.match(server, /Patois, dialect, slang, code-switching, and spelling variation: score on meaning, context, and usefulness/);
+  assert.match(server, /Do not reject a turn just because it is dialect-heavy/);
+  assert.match(server, /category = "Needs More Context"/);
+  assert.match(server, /Patois or slang detected, but the turn is too short to preserve meaning by itself/);
+  assert.doesNotMatch(server, /Reject heavy Patois|Untranslatable Patois|Non-standard heavy Caribbean dialect pattern/);
 });
 
 test("staff lifecycle routes enforce role boundaries and disabled sessions", () => {

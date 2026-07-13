@@ -50,6 +50,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-011/UX-023 | Fixed locally | Admin payout workflow now exposes transaction state and shows ordered queue -> disburse -> proof steps; `/api/admin/payout-proof` rejects proof before disbursement. | `server.ts`, `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin payout proof still required. |
 | UX-015 | Fixed locally | Text-chat payout settlement is JMD for launch regardless of profile country, and country copy now describes profile/location context instead of currency selection. | `server.ts`, `src/components/RegistrationForm.tsx`, `src/components/FileProcessor.tsx`, `tests/securityInvariants.test.ts`. | Browser/live signup and payout preview proof still required. |
 | AUD-020/UX-021 | Fixed locally | High-impact admin actions now require inline reason text in the dashboard and server-side reason validation before moderation, payout, flag, strike, and staff disable/revoke actions. | `server.ts`, `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin action proof still required. |
+| AUD-029/UX-030 | Fixed locally | Scoring instructions no longer reject heavy Patois by default; contributor review cards now show direct score labels, accepted/low-value payout-review status, and per-turn explanations. | `server.ts`, `src/components/FileProcessor.tsx`, `tests/securityInvariants.test.ts`. | Browser/live ZIP scoring proof still required. |
 
 ## Critical Findings
 
@@ -104,7 +105,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-026 | High | Browser workflows | Current evidence is source/tests; no fresh browser walkthrough in this audit. | Browser proof for signup/login/upload/draft/download/submit/ledger/admin moderation/payout. |
 | AUD-027 | High | Live deployment | Local release gate passed, but live deploy state was not verified in this audit. | Live health, auth, upload, ledger, admin, payout proof against `https://chat2cash.mindwaveja.com`. |
 | AUD-028 | Medium | Dependency/security scan | `pnpm audit` passed, but no SAST or secret scan was run. | Add secret scan and source security scan in release checklist. |
-| AUD-029 | Medium | Scoring fixtures | Tests cover some context grading but not enough domain examples. | Fixtures for Patois/code-switching, follow-up meaning change, topic shifts, contradiction, spelling variation, creative/cultural insight. |
+| AUD-029 | Medium | Scoring fixtures | Partially fixed locally: invariant coverage now blocks anti-Patois rejection language and protects plain per-turn review explanations; broader domain fixtures are still needed. | Add fixture tests for follow-up meaning change, topic shifts, contradiction, spelling variation, and creative/cultural insight. |
 
 ## Immediate Fix Order
 
@@ -138,3 +139,4 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | 2026-07-13 | AUD-011/UX-023 payout proof order | Added admin transaction summary, ordered queue/disburse/proof UI, and server rejection for proof before disbursement. |
 | 2026-07-13 | UX-015/AUD-030 JMD settlement clarity | Text-chat payout records now use JMD for launch, profile country copy no longer implies currency conversion, and maintenance backfill writes v5 JMD baseline pricing. |
 | 2026-07-13 | AUD-020/UX-021 admin action reasons | Added admin reason inputs and server-side reason rejection for moderation, payout queue/disburse/proof, flag override, strike clear/add, and staff disable/revoke actions. |
+| 2026-07-13 | AUD-029/UX-030 scoring explainability | Removed anti-Patois rejection wording, added direct per-turn review explanations, and replaced `Noise Segment`/fine-tuning labels with payout-review language. |

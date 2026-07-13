@@ -82,7 +82,7 @@ Status values:
 |---|---|---:|---|---|---|---|---|
 | UX-028 | `[x] Done` | P0 | Patois scoring copy | FAQ said heavy/untranslatable Patois may be discarded, while marketing said authentic Patois was needed and higher value. | FAQ and hero now say Patois is welcome when meaning/context are clear, and scoring rewards useful turns over empty filler. | Keep Patois guidance context-based, not anti-dialect. | Source check confirms `Patois is welcome` wording. |
 | UX-029 | `[?] Needs proof` | P1 | Context grading | Source now supports segments/context signals, but live user examples still need browser verification after ZIP upload. | Source: `contextGrading.ts`, `FileProcessor.tsx`; prior user concern about relevant messages labeled noise. | Run known fixture uploads and compare expected labels. | Follow-up/context messages are not labeled noise when they change meaning. |
-| UX-030 | `[ ] Open` | P1 | Score explainability | User sees scores and tiers, but not a simple “why this got paid / why this got zero” summary per dialogue. | Source: review UI has category/explanation fields but can be dense. | Add per-turn plain-English reason and “what would make this worth more” hints. | A contributor can understand low/no payout without guessing. |
+| UX-030 | `[?] Needs proof` | P1 | Score explainability | Fixed locally: review cards now show plain `Review Score`, accepted/low-value payout-review labels, and the per-turn explanation directly; Patois/code-switching is scored on meaning/context instead of dialect rejection. | Source: `FileProcessor.tsx`, `server.ts`, invariant test. | Browser-test ZIP review after deploy. | A contributor can understand low/no payout without guessing. |
 
 ## Needs No Change
 
@@ -126,3 +126,4 @@ Status values:
 | 2026-07-13 | UX-023 | Split admin payout controls into ordered queue, disburse, and receipt-proof steps; server now rejects proof before disbursement. |
 | 2026-07-13 | UX-004, UX-015 | Updated buyer pricing to v5 JMD $25-$200, made text-chat payout settlement JMD for launch, and changed country copy to profile/location context instead of settlement currency. |
 | 2026-07-13 | UX-021 | Added inline reason fields and server-side reason requirements for high-impact admin actions. Browser/live proof still needed. |
+| 2026-07-13 | UX-030, UX-029 | Removed anti-Patois scoring language, replaced dense review labels with plain payout-review labels, and displayed per-turn explanations directly in the review card. |
