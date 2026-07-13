@@ -12,7 +12,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 - Infrastructure files: `Dockerfile`, `.env.example`, `package.json`, `scripts/release-gate.ps1`, `scripts/api-smoke.ps1`.
 - Verification commands:
   - `corepack pnpm audit --audit-level moderate` -> no known vulnerabilities found.
-  - `corepack pnpm test:release` -> passed: typecheck, 38 unit/security/database/responsive tests, production build, API smoke.
+  - `corepack pnpm test:release` -> passed: typecheck, 39 unit/security/database/responsive tests, production build, API smoke.
 
 ## Confirmed Working
 
@@ -25,7 +25,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | JSON tamper resistance | Working | `validateCanonicalJson` and `/api/submit-json-draft` recompute hashes, grading, duplicate status, payout, and ownership from the session. | Continue ignoring client score, payout, role, status, and identity fields. |
 | Duplicate policy | Working | Full duplicate and all-pair duplicate paths strike cross-user duplicates; same-user full duplicate is idempotent. | Keep pre-submit warnings visible before final submit. |
 | Payout model | Working | `PAYOUT_VERSION = c2c-payout-v4-mindwave-buyer`; tier rates are capped at JMD 75 per accepted pair. | Keep copy and stored metadata versioned together. |
-| Release gate | Working | `corepack pnpm test:release` passed on 2026-07-13 with 38 tests, production build, and API smoke. | Keep release gate required before deploy. |
+| Release gate | Working | `corepack pnpm test:release` passed on 2026-07-13 with 39 tests, production build, and API smoke. | Keep release gate required before deploy. |
 | Dependency audit | Working | `corepack pnpm audit --audit-level moderate` returned no known vulnerabilities. | Re-run before launch/deploy. |
 
 ## Post-Audit Fix Progress
@@ -43,6 +43,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-003/AUD-009 | Fixed locally | `/api/profile/update` validates phone, WiPay fields, country, town, age, gender, and ID image type/size; stored ID image data is replaced with a one-way verification hash marker and `/api/me` returns only `idPhotoVerified`. | `server.ts`, `tests/securityInvariants.test.ts`. | Browser/live signup proof and migration/backfill for legacy base64 profile rows still required. |
 | AUD-010 | Fixed locally | `/api/config` no longer exposes `wipayMerchantAccount`; public config is limited to status/provider/country-code fields. | `server.ts`, `tests/securityInvariants.test.ts`. | Browser/API smoke after deploy still required. |
 | SEC-012/SEC-017/SEC-019 | Fixed locally | Maintenance backfill script is dry-run by default, requires `--apply`, creates DB backups, wraps writes in a transaction, uses current buyer-pricing metadata, and migrates legacy base64 ID photos to hash markers. | `scripts/backfill-zero-pricing.cjs`, `tests/securityInvariants.test.ts`. | Run against a copied/live DB and record dry-run/apply proof. |
+| AUD-019 | Fixed locally | Upload entry now explains upload -> review/download -> submit and includes a WhatsApp `Without Media` export checklist; unsupported/empty/invalid ZIP errors point users back to the correct export flow. | `src/components/FileProcessor.tsx`, `tests/securityInvariants.test.ts`. | Browser/mobile proof still required. |
 
 ## Critical Findings
 
@@ -76,7 +77,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-016 | High | Signup friction | Registration requires WiPay account/link before previewing anonymization. | `RegistrationForm.tsx` blocks submit without WiPay account and payout link. | Allow preview/draft account with payout profile completion before final submit or payout request. | New user can inspect anonymization before entering payout details. |
 | AUD-017 | High | Full user ID display | Fixed locally: nav and upload panel now show a short `acct-last6` code instead of the full internal user ID. | `App.tsx`; `FileProcessor.tsx`. | Browser-test contributor view after deploy. | Normal UI shows short anonymous account/receipt code only. |
 | AUD-018 | Medium | Payout language consistency | Fixed locally: contributor and ledger copy now uses `Estimated Payout`, `accepted chat pair`, `Review Window`, `Payout Status`, and `Payout Record`. | `FileProcessor.tsx`, `ReconciliationLedger.tsx`. | Browser-test after deploy. | Contributor can understand status without financial/technical jargon. |
-| AUD-019 | Medium | Upload guidance | Upload entry does not clearly explain TXT vs ZIP vs reviewed JSON or WhatsApp export steps. | `FileProcessor.tsx` says supported raw TXT, clean ZIP, reviewed JSON. | Add compact upload -> review/download -> submit explanation plus WhatsApp export checklist. | Bad ZIP/no TXT error includes exact re-export instructions. |
+| AUD-019 | Medium | Upload guidance | Fixed locally: upload entry explains ZIP/TXT raw exports, JSON review uploads, download-before-submit, final submit behavior, and exact WhatsApp `Without Media` export steps. | `FileProcessor.tsx`; invariant test. | Browser/mobile proof still required. | Bad ZIP/no TXT error includes exact re-export instructions. |
 | AUD-020 | Medium | Admin UX | Admin dashboard uses prompt dialogs and dense direct action rows. | `AdminDashboard.tsx` uses `window.prompt`; moderation/strike/payout buttons act directly. | Replace with forms/modals, reason fields, ordered payout workflow, and confirmations. | High-impact actions require confirmation and reason before POST. |
 | AUD-021 | Medium | Admin mobile | Admin dashboard inline layout is not browser-verified at mobile widths. | Source uses inline styles and dense rows; no browser evidence here. | Run Playwright/browser checks at 320/375/390/768/desktop and fix wrapping. | No horizontal clipping; controls remain usable. |
 | AUD-022 | Medium | Voice/waitlist positioning | Voice waitlist exists while text upload is primary; voice forms may distract from launch. | `LandingHero.tsx` has multiple voice waitlist surfaces; backend `/api/waitlist`. | Keep one clear waitlist CTA and label voice as not live. | User cannot mistake waitlist for available voice upload. |
@@ -116,10 +117,11 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | Date | Item | Proof |
 |---|---|---|
 | 2026-07-13 | Dependency audit | `corepack pnpm audit --audit-level moderate` -> no known vulnerabilities found. |
-| 2026-07-13 | Local release gate | `corepack pnpm test:release` -> passed typecheck, 38 tests, production build, API smoke. |
+| 2026-07-13 | Local release gate | `corepack pnpm test:release` -> passed typecheck, 39 tests, production build, API smoke. |
 | 2026-07-13 | AUD-005 admin exports | Added `c2c-training-export-v1` safe export contract and invariant test. |
 | 2026-07-13 | AUD-015/AUD-017 contributor return + masked account code | Added owner-scoped submissions API/UI, masked account code in nav/upload, and invariant coverage. |
 | 2026-07-13 | Payout model v4 | Raised MindWave buyer text-chat rates to JMD 10/20/30/45/60 by tier with JMD 75 max displayed rate per accepted pair. |
 | 2026-07-13 | AUD-018 payout copy | Replaced escrow/legal-locking/chatbot-training-pair wording with plain payout/review labels and invariant coverage. |
 | 2026-07-13 | AUD-003/AUD-009/AUD-010 profile/config hardening | Added server-side profile validation, one-way ID verification marker storage, safe profile response shape, removed public merchant account config, and invariant coverage. |
 | 2026-07-13 | SEC-012/SEC-017/SEC-019 maintenance script | Added dry-run/apply maintenance script behavior, DB backup, transaction writes, current buyer-pricing backfill, and legacy base64 ID-photo migration coverage. |
+| 2026-07-13 | AUD-019 upload guidance | Added upload/review/submit guide, WhatsApp `Without Media` checklist, and clearer bad ZIP/empty file recovery errors. |

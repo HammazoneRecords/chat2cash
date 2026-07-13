@@ -31,6 +31,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const publicAccountCode = user.userId ? `acct-${user.userId.slice(-6)}` : "acct-review";
+  const whatsappExportHelp = "In WhatsApp, open the chat, tap More or Export Chat, choose Export Chat, select Without Media, then upload the .zip or .txt file here.";
 
   const fetchReceipt = async (datasetId: string) => {
     try {
@@ -77,7 +78,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
     const isJson = selectedFile.name.endsWith(".json");
 
     if (!isTxt && !isZip && !isJson) {
-      setError("Please select a WhatsApp text (.txt), zipped (.zip), or reviewed JSON (.json) file.");
+      setError(`Please select a WhatsApp text (.txt), zipped (.zip), or reviewed JSON (.json) file. ${whatsappExportHelp}`);
       return;
     }
 
@@ -121,7 +122,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
         );
 
         if (!txtFile) {
-          throw new Error("No text database (.txt) found inside the uploaded ZIP archive.");
+          throw new Error(`No WhatsApp .txt file was found inside that ZIP. ${whatsappExportHelp}`);
         }
 
         chatText = await txtFile.async("string");
@@ -135,7 +136,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
       }
 
       if (!chatText.trim()) {
-        throw new Error("The WhatsApp export file is empty or corrupted.");
+        throw new Error(`The WhatsApp export file is empty or corrupted. Re-export the chat without media and upload the new .zip or .txt file.`);
       }
 
       setStatusMessage("Running local speaker masking & initiating AI quality evaluation...");
@@ -356,6 +357,25 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
             <div className="text-xs bg-emerald-950/40 text-emerald-300 px-3 py-1.5 rounded-xl font-mono border border-emerald-900/30 self-start">
               WiPay Wallet Destination: <span className="font-bold">{user.wipayAccount} ({user.country === "JM" ? "JMD" : user.country === "BB" ? "BBD" : "TTD"})</span>
             </div>
+          </div>
+
+          <div id="upload-review-submit-guide" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-slate-800 bg-[#060a13] p-4">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400">1. Upload</div>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">Use a WhatsApp export made with <strong>Without Media</strong>. ZIP and TXT are raw chat exports.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-[#060a13] p-4">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400">2. Review</div>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">Check the original-to-anonymized preview. You can download JSON or CSV before submitting.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-[#060a13] p-4">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400">3. Submit</div>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">Final submit stores only sanitized content, recomputes scoring, and sends it to payout review.</p>
+            </div>
+          </div>
+
+          <div id="whatsapp-export-checklist" className="rounded-2xl border border-emerald-900/30 bg-emerald-950/15 p-4 text-xs leading-relaxed text-slate-300">
+            <strong className="text-emerald-300">WhatsApp export:</strong> Open chat, tap More or Export Chat, choose Export Chat, select <strong>Without Media</strong>, then upload the downloaded .zip or .txt.
           </div>
 
           {/* Drag and Drop Box */}

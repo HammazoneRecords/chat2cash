@@ -327,6 +327,19 @@ test("reviewed draft submit surfaces duplicate and partial duplicate messages", 
   assert.match(submitHandler, /pricing applied/);
 });
 
+test("upload entry explains raw export, review, submit, and WhatsApp ZIP recovery", () => {
+  assert.match(fileProcessor, /upload-review-submit-guide/);
+  assert.match(fileProcessor, /1\. Upload/);
+  assert.match(fileProcessor, /2\. Review/);
+  assert.match(fileProcessor, /3\. Submit/);
+  assert.match(fileProcessor, /whatsappExportHelp/);
+  assert.match(fileProcessor, /Without Media/);
+  assert.match(fileProcessor, /No WhatsApp \.txt file was found inside that ZIP/);
+  assert.match(fileProcessor, /Re-export the chat without media/);
+  assert.match(fileProcessor, /download JSON or CSV before submitting/);
+  assert.match(fileProcessor, /Final submit stores only sanitized content/);
+});
+
 test("production bundle and staff invite route are present", () => {
   assert.ok(fs.existsSync(path.join(root, "dist", "server.cjs")));
   const main = fs.readFileSync(path.join(root, "src", "main.tsx"), "utf8");
