@@ -12,6 +12,7 @@ interface LandingHeroProps {
 interface Stats {
   totalChats: number;
   totalMessages: number;
+  totalPayoutsUnderReviewJMD?: number;
   totalPaidJMD: number;
 }
 
@@ -212,8 +213,8 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
             <div className="text-[10px] font-mono text-emerald-700 font-bold uppercase tracking-wide mt-1">Messages Gathered</div>
           </div>
           <div className="bg-[#050810] p-4 rounded-2xl border border-slate-800 text-center">
-            <div className="text-2xl font-mono font-bold text-white">JMD {stats.totalPaidJMD.toLocaleString()}</div>
-            <div className="text-[10px] font-mono text-slate-500 font-bold uppercase tracking-wide mt-1">Total Paid Out</div>
+            <div className="text-2xl font-mono font-bold text-white">JMD {(stats.totalPayoutsUnderReviewJMD ?? stats.totalPaidJMD).toLocaleString()}</div>
+            <div className="text-[10px] font-mono text-slate-500 font-bold uppercase tracking-wide mt-1">Payouts Under Review</div>
           </div>
         </div>
       </motion.div>

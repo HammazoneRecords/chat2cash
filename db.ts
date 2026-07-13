@@ -418,8 +418,14 @@ export class ChatDB {
   getStats() {
     const totalChats = (this.db.prepare("SELECT COUNT(*) as count FROM datasets").get() as any).count;
     const totalMessages = (this.db.prepare("SELECT SUM(CAST(json_extract(metadata, '$.totalLinesAnalyzed') AS INTEGER)) as total FROM datasets").get() as any).total || 0;
+    const totalPayoutsUnderReviewJMD = (this.db.prepare("SELECT SUM(payoutAmount) as total FROM datasets WHERE currency = 'JMD'").get() as any).total || 0;
     const jmdPaid = (this.db.prepare("SELECT SUM(amount) as total FROM transactions WHERE currency = 'JMD'").get() as any).total || 0;
-    return { totalChats, totalMessages, totalPaidJMD: Math.round(jmdPaid) };
+    return {
+      totalChats,
+      totalMessages,
+      totalPayoutsUnderReviewJMD: Math.round(totalPayoutsUnderReviewJMD),
+      totalPaidJMD: Math.round(jmdPaid),
+    };
   }
 
   close() {

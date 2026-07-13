@@ -56,7 +56,7 @@ Status values:
 |---|---|---:|---|---|---|---|---|
 | UX-017 | `[x] Done` | P1 | Search placeholder | Search placeholder said lookup by email profile even public API returns no profiles. | Placeholder now says dataset ID, anonymous receipt, status, or file receipt. | Keep public search copy limited to public fields. | Source check confirms privacy-safe placeholder. |
 | UX-018 | `[x] Done` | P1 | Refresh button | `REFRESH HARVEST DIALECTS` was unclear and sounded extractive. | Button now says `Refresh ledger`. | Keep action wording literal. | Source check confirms `Refresh ledger`. |
-| UX-019 | `[ ] Open` | P2 | Empty stats | Overview live stats show 0 chats/messages/paid while ledger shows submitted datasets and payouts. | Live Overview vs Ledger. | Ensure Overview stats use same public stats source as ledger or clarify scope. | Overview and ledger totals do not contradict. |
+| UX-019 | `[?] Needs proof` | P2 | Empty stats | Fixed locally: `/api/stats` now returns `totalPayoutsUnderReviewJMD` from dataset payout amounts, and the Overview card labels that metric as `Payouts Under Review` instead of `Total Paid Out`. | Source: `db.ts`, `LandingHero.tsx`, invariant test. | Browser-test Overview and Ledger after deploy with submitted pending datasets. | Overview and ledger totals do not contradict. |
 
 ## Admin and Moderator Issues
 
@@ -129,3 +129,4 @@ Status values:
 | 2026-07-13 | UX-030, UX-029 | Removed anti-Patois scoring language, replaced dense review labels with plain payout-review labels, and displayed per-turn explanations directly in the review card. |
 | 2026-07-13 | UX-026 | Removed specific voice payout amounts and premium-tier framing from the landing voice sections; FAQ now states paid uploads are text-chat only at launch. |
 | 2026-07-13 | UX-016 | Added safe auth recovery messages for login failures, existing-email signup, and profile-save correction paths. |
+| 2026-07-13 | UX-019 | Aligned Overview stats with ledger payout semantics by adding `totalPayoutsUnderReviewJMD` and relabeling the landing total as `Payouts Under Review`. |

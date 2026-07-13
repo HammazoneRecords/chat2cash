@@ -5,6 +5,7 @@ import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
 const server = fs.readFileSync(path.join(root, "server.ts"), "utf8");
+const dbSource = fs.readFileSync(path.join(root, "db.ts"), "utf8");
 const landing = fs.readFileSync(path.join(root, "src", "components", "LandingHero.tsx"), "utf8");
 const helpFaq = fs.readFileSync(path.join(root, "src", "components", "HelpFaq.tsx"), "utf8");
 const appShell = fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8");
@@ -47,6 +48,14 @@ test("public reconciliation returns aggregates and safe receipt rows only", () =
   assert.match(server, /anonymous-contributor/);
   assert.match(server, /profiles: \[\]/);
   assert.match(server, /transactions: \[\]/);
+});
+
+test("overview stats align with public ledger payout semantics", () => {
+  assert.match(dbSource, /totalPayoutsUnderReviewJMD/);
+  assert.match(dbSource, /SELECT SUM\(payoutAmount\) as total FROM datasets WHERE currency = 'JMD'/);
+  assert.match(landing, /totalPayoutsUnderReviewJMD/);
+  assert.match(landing, /Payouts Under Review/);
+  assert.doesNotMatch(landing, /Total Paid Out/);
 });
 
 test("moderation queue is role protected", () => {
