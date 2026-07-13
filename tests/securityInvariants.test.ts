@@ -249,6 +249,17 @@ test("contributors can preview before payout setup but cannot submit payable dat
   assert.match(fileProcessor, /disabled=\{loading \|\| !hasPayoutProfile\}/);
 });
 
+test("registration explains standard payout without photo ID", () => {
+  assert.match(registrationForm, /standard-payout-no-id-note/);
+  assert.match(registrationForm, /Standard payout is available without a photo ID/);
+  assert.match(registrationForm, /Leave this unchecked for standard payout with no ID upload/);
+  assert.match(registrationForm, /PHOTO ID FOR MULTIPLIER REVIEW/);
+  assert.match(registrationForm, /2X OPT-IN ONLY/);
+  assert.match(registrationForm, /server stores only a one-way verification marker/);
+  assert.doesNotMatch(registrationForm, /To satisfy standard data audits/);
+  assert.doesNotMatch(registrationForm, /AUTHENTIC IDENTITY PHOTO CARD/);
+});
+
 test("maintenance backfill is dry-run by default and can migrate legacy ID photos", () => {
   assert.match(backfillScript, /const apply = process\.argv\.includes\("--apply"\)/);
   assert.match(backfillScript, /mode=\$\{apply \? "apply" : "dry-run"\}/);

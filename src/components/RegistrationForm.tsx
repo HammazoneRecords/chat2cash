@@ -461,10 +461,15 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
                 <span className="text-[10px] bg-emerald-900 text-emerald-300 px-1.5 py-0.5 rounded uppercase font-mono tracking-wide">Beta</span>
               </label>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Provide extended educational background (optional fields below) to enrich dataset demographics and unlock premium 2x evaluation rates.
+                Leave this unchecked for standard payout with no ID upload. Turn it on only if you want to share extra demographic proof for multiplier review.
               </p>
             </div>
           </div>
+          {!demographicOptIn && (
+            <div id="standard-payout-no-id-note" className="px-5 py-3 border-t border-slate-800/50 bg-slate-950/35 text-xs leading-relaxed text-slate-400">
+              Standard payout is available without a photo ID. You can finish signup, preview anonymization, and submit paid chats after payout setup.
+            </div>
+          )}
           
           {demographicOptIn && (
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in border-t border-slate-800/50">
@@ -568,7 +573,7 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5 font-mono">
                 <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                AUTHENTIC IDENTITY PHOTO CARD <span className="text-emerald-500 font-bold">(MANDATORY FOR 2X)*</span>
+                PHOTO ID FOR MULTIPLIER REVIEW <span className="text-emerald-500 font-bold">(2X OPT-IN ONLY)*</span>
               </label>
               <span className="text-[10px] px-2 py-0.5 rounded border font-mono text-emerald-400 bg-emerald-950/40 border-emerald-900/60 font-bold">
                 REQUIRED
@@ -576,7 +581,7 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
             </div>
 
             <p className="text-xs text-slate-400 leading-normal">
-              To satisfy standard data audits, please attach a clear image of your official Photo ID/Driver's Licence. <strong>This is required to claim the 2x Demographic Multiplier.</strong> Your sensitive data is protected: <strong>our system automatically overlays permanent solid blackout frames</strong> over your Face and Taxpayer Registration Number (TRN) in your browser.
+              This is not required for standard payout. It is only used to review multiplier eligibility. The browser applies solid blackout frames over your face and Taxpayer Registration Number before upload; the server stores only a one-way verification marker.
             </p>
 
             {/* Mask Options */}
