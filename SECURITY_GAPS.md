@@ -92,3 +92,4 @@ Add proof entries here as items are closed.
 | Date | Gap ID | Proof |
 |---|---|---|
 | 2026-07-12 | FIX-001 to FIX-005 | Verified from local source and recent live deploy notes. |
+| 2026-07-13 | Full application audit | Added `FULL_APPLICATION_AUDIT.md`; verified dependency audit and local release gate. |
