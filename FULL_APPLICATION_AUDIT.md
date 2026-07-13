@@ -52,6 +52,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-020/UX-021 | Fixed locally | High-impact admin actions now require inline reason text in the dashboard and server-side reason validation before moderation, payout, flag, strike, and staff disable/revoke actions. | `server.ts`, `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin action proof still required. |
 | AUD-029/UX-030 | Fixed locally | Scoring instructions no longer reject heavy Patois by default; contributor review cards now show direct score labels, accepted/low-value payout-review status, and per-turn explanations. | `server.ts`, `src/components/FileProcessor.tsx`, `tests/securityInvariants.test.ts`. | Browser/live ZIP scoring proof still required. |
 | UX-026 | Fixed locally | Voice-note surfaces now frame audio as waitlist/future program only; exact voice payout amounts and premium-tier framing were removed from landing/FAQ copy. | `src/components/LandingHero.tsx`, `src/components/HelpFaq.tsx`, `tests/securityInvariants.test.ts`. | Browser/live landing proof still required. |
+| UX-016 | Fixed locally | Login and registration errors now map common auth/profile failures to safe recovery guidance for wrong password, existing email, profile load, and profile field correction. | `src/components/LoginForm.tsx`, `src/components/RegistrationForm.tsx`, `tests/securityInvariants.test.ts`. | Browser/live failed-auth proof still required. |
 
 ## Critical Findings
 
@@ -142,3 +143,4 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | 2026-07-13 | AUD-020/UX-021 admin action reasons | Added admin reason inputs and server-side reason rejection for moderation, payout queue/disburse/proof, flag override, strike clear/add, and staff disable/revoke actions. |
 | 2026-07-13 | AUD-029/UX-030 scoring explainability | Removed anti-Patois rejection wording, added direct per-turn review explanations, and replaced `Noise Segment`/fine-tuning labels with payout-review language. |
 | 2026-07-13 | UX-026 voice launch boundary | Removed specific voice payout amounts and premium-tier labels from unavailable voice upload surfaces; FAQ now states paid uploads are text-chat only at launch. |
+| 2026-07-13 | UX-016 auth recovery | Added safe login/signup/profile error recovery messages and invariant coverage so common failures point to the next action. |

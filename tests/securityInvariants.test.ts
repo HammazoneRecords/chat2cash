@@ -10,6 +10,7 @@ const helpFaq = fs.readFileSync(path.join(root, "src", "components", "HelpFaq.ts
 const appShell = fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8");
 const adminDashboard = fs.readFileSync(path.join(root, "src", "components", "AdminDashboard.tsx"), "utf8");
 const adminLogin = fs.readFileSync(path.join(root, "src", "components", "AdminLogin.tsx"), "utf8");
+const loginForm = fs.readFileSync(path.join(root, "src", "components", "LoginForm.tsx"), "utf8");
 const fileProcessor = fs.readFileSync(path.join(root, "src", "components", "FileProcessor.tsx"), "utf8");
 const registrationForm = fs.readFileSync(path.join(root, "src", "components", "RegistrationForm.tsx"), "utf8");
 const mySubmissions = fs.readFileSync(path.join(root, "src", "components", "MySubmissions.tsx"), "utf8");
@@ -139,6 +140,19 @@ test("contributor payout copy uses plain buyer-flow language", () => {
   assert.match(reconciliationLedger, /accepted chat pairs/);
   assert.doesNotMatch(fileProcessor, /WIPAY ESTIMATE ESCROW|validated chatbot training pair|Legal Audit Locking|CLAIM DISBURSEMENT|Fine-Tuning Density Rating|Recommended Training Node|Noise Segment|Chit-Chat Noise/);
   assert.doesNotMatch(reconciliationLedger, /escrow holdings|Escrow released|Escrow Status|WiPay Ledger Log|fine-tuning segments/);
+});
+
+test("auth forms provide safe recovery guidance for common failures", () => {
+  assert.match(loginForm, /function loginErrorMessage/);
+  assert.match(loginForm, /Check the email and password/);
+  assert.match(loginForm, /use Create one below/);
+  assert.match(loginForm, /contributor profile could not load/);
+  assert.match(registrationForm, /function registrationErrorMessage/);
+  assert.match(registrationForm, /account may already exist for this email/);
+  assert.match(registrationForm, /Use Sign in instead/);
+  assert.match(registrationForm, /profile details need correction/);
+  assert.doesNotMatch(loginForm, /setError\(err\?\.message \|\|/);
+  assert.doesNotMatch(registrationForm, /setError\(err\?\.message \|\|/);
 });
 
 test("Patois and code-switching are not rejected for being dialect-heavy", () => {

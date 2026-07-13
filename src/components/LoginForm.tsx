@@ -8,6 +8,17 @@ interface LoginFormProps {
   onSwitchToRegister: () => void;
 }
 
+function loginErrorMessage(message?: string) {
+  const normalized = (message || "").toLowerCase();
+  if (normalized.includes("invalid") || normalized.includes("password") || normalized.includes("credential")) {
+    return "Sign in failed. Check the email and password, then try again. If this is a new account, use Create one below.";
+  }
+  if (normalized.includes("profile")) {
+    return "Signed in, but your contributor profile could not load. Refresh once, then contact support if it keeps happening.";
+  }
+  return "Sign in failed. Check your email and password, or create an account if you have not registered yet.";
+}
+
 export default function LoginForm({ onLoginSuccess, onSwitchToRegister }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,20 +42,18 @@ export default function LoginForm({ onLoginSuccess, onSwitchToRegister }: LoginF
         password,
       });
 
-      if (authError) {
-        throw new Error(authError.message || "Sign in failed.");
-      }
+      if (authError) throw new Error(loginErrorMessage(authError.message));
 
       // Fetch profile after successful sign in
       const profileRes = await fetch("/api/me", { credentials: "include" });
       const profileData = await profileRes.json();
       if (!profileRes.ok) {
-        throw new Error(profileData.error || "Failed to load profile.");
+        throw new Error(loginErrorMessage(profileData.error || "profile"));
       }
 
       onLoginSuccess(profileData.user);
     } catch (err: any) {
-      setError(err?.message || "Sign in failed. Check your email and password.");
+      setError(loginErrorMessage(err?.message));
     } finally {
       setLoading(false);
     }

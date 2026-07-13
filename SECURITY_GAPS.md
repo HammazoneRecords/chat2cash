@@ -61,6 +61,7 @@ These records should not be rewritten or deleted during normal fixes. Add new ro
 | FIX-014 | `[?] Needs proof` | Admin action reason enforcement | High-impact admin actions now require inline dashboard reasons and server-side reason validation before moderation, payout queue/disburse/proof, flag override, strike, and staff disable/revoke actions. | Local source: `server.ts`, `AdminDashboard.tsx`; unit invariant test. Browser/live proof still required. |
 | FIX-015 | `[?] Needs proof` | Scoring and contributor explainability | Removed anti-Patois rejection wording and replaced dense review labels with direct payout-review score/status/explanation text. | Local source: `server.ts`, `FileProcessor.tsx`; unit invariant test. Browser/live ZIP proof still required. |
 | FIX-016 | `[?] Needs proof` | Voice launch boundary | Voice-note surfaces now say future audio/waitlist only, remove specific voice payout amounts, and FAQ says paid uploads are text-chat only at launch. | Local source: `LandingHero.tsx`, `HelpFaq.tsx`; unit invariant test. Browser/live proof still required. |
+| FIX-017 | `[?] Needs proof` | Auth recovery guidance | Login and registration errors now provide safe next actions for wrong password, existing email, profile load failure, and profile field correction. | Local source: `LoginForm.tsx`, `RegistrationForm.tsx`; unit invariant test. Browser/live proof still required. |
 
 ## Open Gaps
 
@@ -112,5 +113,6 @@ Add proof entries here as items are closed.
 | 2026-07-13 | SEC-012, SEC-017, SEC-019 | Hardened maintenance backfill script with dry-run default, explicit `--apply`, DB backup, transaction writes, current buyer-pricing backfill, and legacy base64 ID-photo migration. Temp-DB dry run listed one zero-price dataset and one legacy ID photo, then left both rows unchanged. |
 | 2026-07-13 | FIX-012, UX-015 | Text-chat payouts now use v5 JMD buyer pricing and JMD settlement for launch; profile country no longer implies TT/BB/USD payout currency. |
 | 2026-07-13 | FIX-016 | Removed specific voice payout amounts and premium-tier framing from unavailable voice upload surfaces; FAQ now states paid uploads are text-chat only at launch. |
+| 2026-07-13 | FIX-017 | Added safe auth recovery messages for login failures, existing-email signup, and profile correction paths. |
 | 2026-07-13 | FIX-014 | Added explicit admin reason enforcement and audit notes for high-impact admin actions. |
 | 2026-07-13 | FIX-015 | Removed anti-Patois scoring language and exposed per-turn review explanations in the contributor review UI. |

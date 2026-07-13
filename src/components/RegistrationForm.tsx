@@ -9,6 +9,20 @@ interface RegistrationFormProps {
   defaultProfile?: any;
 }
 
+function registrationErrorMessage(message?: string) {
+  const normalized = (message || "").toLowerCase();
+  if (normalized.includes("already") || normalized.includes("exists") || normalized.includes("duplicate")) {
+    return "An account may already exist for this email. Use Sign in instead, or try another email address.";
+  }
+  if (normalized.includes("password")) {
+    return "Password was not accepted. Use at least 8 characters and make sure both password fields match.";
+  }
+  if (normalized.includes("profile") || normalized.includes("wipay") || normalized.includes("phone") || normalized.includes("country")) {
+    return "Account access was created, but profile details need correction. Check phone, country, town, and WiPay fields, then save again.";
+  }
+  return "Account setup could not finish. Check the highlighted fields and try again, or switch to Sign in if you already registered.";
+}
+
 export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, defaultProfile }: RegistrationFormProps) {
   const [fullName, setFullName] = useState(defaultProfile?.fullName || "");
   const [email, setEmail] = useState(defaultProfile?.email || "");
@@ -230,9 +244,7 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
         name: fullName,
       });
 
-      if (authError) {
-        throw new Error(authError.message || "Account creation failed.");
-      }
+      if (authError) throw new Error(registrationErrorMessage(authError.message));
 
       // Step 2: Save contributor-specific profile data (session cookie authenticates)
       const profileRes = await fetch("/api/profile/update", {
@@ -247,12 +259,12 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
 
       const profileData = await profileRes.json();
       if (!profileRes.ok) {
-        throw new Error(profileData.error || "Profile update failed.");
+        throw new Error(registrationErrorMessage(profileData.error || "profile"));
       }
 
       onRegisterSuccess(profileData.user);
     } catch (err: any) {
-      setError(err?.message || "Failed to create account. Please try again.");
+      setError(registrationErrorMessage(err?.message));
     } finally {
       setLoading(false);
     }
