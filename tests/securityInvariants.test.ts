@@ -27,7 +27,12 @@ test("draft preview keeps original raw line but persisted datasets strip preview
 });
 
 test("legacy profile creation is disabled", () => {
-  assert.match(server, /Legacy profile creation is disabled/);
+  const legacyProfileSection = server.slice(
+    server.indexOf('app.post("/api/profile"'),
+    server.indexOf("// Fetch detailed database statistics"),
+  );
+  assert.match(legacyProfileSection, /Legacy profile creation is disabled/);
+  assert.doesNotMatch(legacyProfileSection, /database\.createProfile|cleanPhone|numericSuffix|idPhoto \|\|/);
 });
 
 test("public reconciliation returns aggregates and safe receipt rows only", () => {
@@ -165,6 +170,46 @@ test("request body limits are route-specific and security headers are present", 
   assert.match(server, /X-Content-Type-Options/);
   assert.match(server, /Content-Security-Policy/);
   assert.match(server, /Invalid request origin/);
+});
+
+test("public config does not expose merchant account values", () => {
+  const configRoute = server.slice(
+    server.indexOf('app.get("/api/config"'),
+    server.indexOf("// Profile update"),
+  );
+  assert.match(configRoute, /wipayConfigured/);
+  assert.match(configRoute, /aiConfigured/);
+  assert.match(configRoute, /wipayCountryCode/);
+  assert.doesNotMatch(configRoute, /wipayMerchantAccount|WIPAY_ACCOUNT_NUMBER|Demo Gateway/);
+});
+
+test("profile update validates fields and never returns or stores base64 ID images", () => {
+  const profileHelpers = server.slice(
+    server.indexOf("function sanitizeProfileForClient"),
+    server.indexOf("// Cascading AI evaluator"),
+  );
+  const profileUpdate = server.slice(
+    server.indexOf('app.post("/api/profile/update"'),
+    server.indexOf("// Legacy registration endpoint"),
+  );
+  const meRoute = server.slice(
+    server.indexOf('app.get("/api/me"'),
+    server.indexOf("// Health check endpoint"),
+  );
+
+  assert.match(profileHelpers, /const \{ idPhoto, \.\.\.safeProfile \} = profile/);
+  assert.match(profileHelpers, /idPhotoVerified: Boolean\(idPhoto\)/);
+  assert.match(profileHelpers, /MAX_ID_PHOTO_BYTES/);
+  assert.match(profileHelpers, /new URL\(wipayLink\)/);
+  assert.match(profileHelpers, /ALLOWED_PROFILE_COUNTRIES/);
+  assert.match(profileHelpers, /crypto\.createHash\("sha256"\)/);
+  assert.match(profileHelpers, /idPhotoMarker = `verified-hash:v1:\$\{digest\}`/);
+  assert.match(profileUpdate, /validateProfilePayload\(req\.body\)/);
+  assert.match(profileUpdate, /database\.updateProfile\(userId, validated\.profile\)/);
+  assert.match(profileUpdate, /sanitizeProfileForClient\(user\)/);
+  assert.match(meRoute, /sanitizeProfileForClient\(user\)/);
+  assert.doesNotMatch(profileUpdate, /idPhoto: idPhoto \|\| ""/);
+  assert.doesNotMatch(profileHelpers, /\.\.\.safeProfile,\s*idPhoto:/);
 });
 
 test("docker context excludes secrets, databases, logs, and local artifacts", () => {

@@ -39,9 +39,96 @@ const AI_PROVIDER = RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID
     ? "deepseek"
     : "local";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const ALLOWED_PROFILE_COUNTRIES = new Set(["JM", "TT", "BB", "US"]);
+const ALLOWED_GENDERS = new Set(["female", "male", "non-binary", "prefer-not-to-say", "other", "intersex (formerly referred to locally as hermaphrodite)"]);
+const MAX_ID_PHOTO_BYTES = 2_000_000;
 
 console.log(`[AI] Evaluation provider: ${AI_PROVIDER.toUpperCase()}`);
 const MAX_AI_PROMPT_CHARS = 24000;
+
+function cleanText(value: any, max = 120) {
+  return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, max);
+}
+
+function sanitizeProfileForClient(profile: any) {
+  if (!profile) return profile;
+  const { idPhoto, ...safeProfile } = profile;
+  return {
+    ...safeProfile,
+    idPhotoVerified: Boolean(idPhoto),
+  };
+}
+
+function validateProfilePayload(body: any) {
+  const phone = cleanText(body.phone, 32);
+  const wipayAccount = cleanText(body.wipayAccount, 64);
+  const wipayLink = cleanText(body.wipayLink, 240);
+  const country = cleanText(body.country || "JM", 8).toUpperCase();
+  const town = cleanText(body.town, 80);
+  const age = Number(body.age);
+  const gender = cleanText(body.gender, 40).toLowerCase();
+  const educationLevel = cleanText(body.educationLevel, 80);
+  const school = cleanText(body.school, 120);
+  const singleParentHome = Boolean(body.singleParentHome);
+  const demographicOptIn = Boolean(body.demographicOptIn);
+  const idPhoto = String(body.idPhoto || "");
+
+  if (!phone || !/^[+\d()\-\s]{7,32}$/.test(phone)) {
+    return { error: "Enter a valid phone number." };
+  }
+  if (!wipayAccount || !/^[a-zA-Z0-9_.\- ]{3,64}$/.test(wipayAccount)) {
+    return { error: "Enter a valid WiPay account reference." };
+  }
+  try {
+    const url = new URL(wipayLink);
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error("bad protocol");
+  } catch {
+    return { error: "Enter a valid WiPay payout link." };
+  }
+  if (!ALLOWED_PROFILE_COUNTRIES.has(country)) {
+    return { error: "Select a supported country." };
+  }
+  if (!town || town.length < 2) {
+    return { error: "Enter your town or parish." };
+  }
+  if (!Number.isInteger(age) || age < 18 || age > 100) {
+    return { error: "Age must be between 18 and 100." };
+  }
+  if (!ALLOWED_GENDERS.has(gender)) {
+    return { error: "Select a supported gender option." };
+  }
+
+  let idPhotoMarker = "";
+  if (demographicOptIn) {
+    const match = idPhoto.match(/^data:image\/(jpeg|jpg|png|webp);base64,([a-zA-Z0-9+/=]+)$/);
+    if (!match) {
+      return { error: "Upload a redacted JPG, PNG, or WebP ID image for the multiplier check." };
+    }
+    const byteLength = Buffer.byteLength(match[2], "base64");
+    if (byteLength <= 0 || byteLength > MAX_ID_PHOTO_BYTES) {
+      return { error: "Redacted ID image must be under 2MB." };
+    }
+    const digest = crypto.createHash("sha256").update(match[2]).digest("hex");
+    idPhotoMarker = `verified-hash:v1:${digest}`;
+  }
+
+  return {
+    profile: {
+      phone,
+      wipayAccount,
+      wipayLink,
+      country,
+      town,
+      age,
+      gender,
+      educationLevel: educationLevel || null,
+      school: school || null,
+      singleParentHome: singleParentHome ? 1 : 0,
+      demographicOptIn: demographicOptIn ? 1 : 0,
+      idPhoto: idPhotoMarker,
+    },
+  };
+}
 
 // Cascading AI evaluator: Oreluwa (RunPod) → DeepSeek → local heuristics
 async function runAIEvaluation(prompt: string): Promise<any | null> {
@@ -245,7 +332,7 @@ app.get("/api/me", requireSession, (req: any, res) => {
   if (!user) {
     return res.status(404).json({ error: "Profile not found." });
   }
-  res.json({ user });
+  res.json({ user: sanitizeProfileForClient(user) });
 });
 
 // Health check endpoint
@@ -264,7 +351,6 @@ app.get("/api/config", (req, res) => {
     wipayConfigured: !!process.env.WIPAY_MERCHANT_KEY,
     aiConfigured: AI_PROVIDER !== "local",
     aiProvider: AI_PROVIDER,
-    wipayMerchantAccount: WIPAY_ACCOUNT_NUMBER || "Demo Gateway",
     wipayCountryCode: WIPAY_COUNTRY_CODE,
   });
 });
@@ -272,89 +358,24 @@ app.get("/api/config", (req, res) => {
 // Profile update — called after Better Auth signUp to save contributor-specific fields
 app.post("/api/profile/update", requireSession, (req: any, res) => {
   const userId = req.session.user.id;
-  const { phone, wipayAccount, wipayLink, country, town, age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto } = req.body;
-
-  if (demographicOptIn && !idPhoto) {
-    return res.status(400).json({ error: "Photo ID required for 2x Payout Multiplier." });
+  const validated = validateProfilePayload(req.body);
+  if ("error" in validated) {
+    return res.status(400).json({ error: validated.error });
   }
 
   try {
-    database.updateProfile(userId, {
-      phone: phone || "",
-      wipayAccount: wipayAccount || "",
-      wipayLink: wipayLink || "",
-      country: country || "JM",
-      town: town || "",
-      age: Number(age) || null,
-      gender: gender || "",
-      educationLevel: educationLevel || null,
-      school: school || null,
-      singleParentHome: singleParentHome ? 1 : 0,
-      demographicOptIn: demographicOptIn ? 1 : 0,
-      idPhoto: idPhoto || "",
-    });
+    database.updateProfile(userId, validated.profile);
 
     const user = database.getProfile(userId);
-    res.json({ success: true, user });
+    res.json({ success: true, user: sanitizeProfileForClient(user) });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Profile update failed." });
   }
 });
 
-// Legacy registration endpoint — kept for backward compat, Better Auth flow is preferred
+// Legacy registration endpoint — disabled. Better Auth session ownership is required.
 app.post("/api/profile", (req, res) => {
   return res.status(410).json({ error: "Legacy profile creation is disabled. Please use the authenticated registration flow." });
-
-  const { email, phone, fullName, wipayAccount, wipayLink, country, town, age, gender, educationLevel, school, singleParentHome, demographicOptIn, idPhoto } = req.body;
-  
-  if (!email || !phone || !fullName || !age || !gender) {
-    return res.status(400).json({ error: "Email, phone number, full name, age, and gender are required." });
-  }
-
-  // idPhoto is only mandatory if demographicOptIn is active
-  if (demographicOptIn && !idPhoto) {
-    return res.status(400).json({ error: "Photo ID attachment is required for 2x Demographic Payout verification." });
-  }
-  
-  // Format phone to extract digits
-  const cleanPhone = phone.replace(/\D/g, "");
-  
-  // Derive a persistent, proper UserId based on email and phone hash or key-mapping
-  // e.g. USR-TT-8681234
-  const numericSuffix = cleanPhone.slice(-6) || Math.floor(100000 + Math.random() * 900000).toString();
-  const userId = `USR-${country || "JM"}-${numericSuffix}`;
-
-  const profile = {
-    userId,
-    fullName,
-    email,
-    phone,
-    wipayAccount: wipayAccount || "",
-    wipayLink: wipayLink || "",
-    country: country || "JM",
-    town: town || "",
-    age: Number(age),
-    gender,
-    educationLevel,
-    school,
-    singleParentHome,
-    demographicOptIn: !!demographicOptIn,
-    idPhoto: idPhoto || "",
-  };
-
-  try {
-    database.createProfile(profile);
-  } catch (err: any) {
-    if (err.message?.includes("UNIQUE constraint")) {
-      return res.status(409).json({ error: "Profile with this email already exists." });
-    }
-    throw err;
-  }
-
-  res.json({
-    success: true,
-    user: profile,
-  });
 });
 
 // Fetch detailed database statistics & transaction history for reconciliation
