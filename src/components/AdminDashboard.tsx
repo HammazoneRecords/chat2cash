@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [staff, setStaff] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [receiptInputs, setReceiptInputs] = useState<Record<string, string>>({});
+  const [actionReasons, setActionReasons] = useState<Record<string, string>>({});
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"moderator" | "admin">("moderator");
   const [inviteResult, setInviteResult] = useState<any>(null);
@@ -62,75 +63,100 @@ export default function AdminDashboard() {
     window.open("/api/admin/export-all", "_blank");
   };
 
+  const reasonFor = (key: string) => (actionReasons[key] || "").trim();
+  const setReasonFor = (key: string, value: string) => setActionReasons(prev => ({ ...prev, [key]: value }));
+  const clearReasonFor = (key: string) => setActionReasons(prev => ({ ...prev, [key]: "" }));
+
   const approvePayout = async (datasetId: string, userId: string, amount: number) => {
+    const reason = reasonFor(`payout:${datasetId}`);
+    if (!reason) return;
     await fetch("/api/payouts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ datasetId, userId, amount, currency: "JMD" }),
+      body: JSON.stringify({ datasetId, userId, amount, currency: "JMD", reason }),
       credentials: "include",
     });
+    clearReasonFor(`payout:${datasetId}`);
     load();
   };
 
   const markDisbursed = async (datasetId: string) => {
+    const reason = reasonFor(`payout:${datasetId}`);
+    if (!reason) return;
     await fetch("/api/admin/payout-approve", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ datasetId }),
+      body: JSON.stringify({ datasetId, reason }),
       credentials: "include",
     });
+    clearReasonFor(`payout:${datasetId}`);
     load();
   };
 
   const decideModeration = async (datasetId: string, decision: "approve" | "reject" | "hold" | "correction") => {
+    const reason = reasonFor(`moderation:${datasetId}`);
+    if (!reason) return;
     await fetch("/api/moderation/decision", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ datasetId, decision, reason: `Admin dashboard decision: ${decision}` }),
+      body: JSON.stringify({ datasetId, decision, reason }),
       credentials: "include",
     });
+    clearReasonFor(`moderation:${datasetId}`);
     load();
   };
 
   const addProof = async (datasetId: string) => {
     const receiptNumber = receiptInputs[datasetId];
+    const reason = reasonFor(`payout:${datasetId}`);
     if (!receiptNumber?.trim()) return;
+    if (!reason) return;
     await fetch("/api/admin/payout-proof", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ datasetId, receiptNumber }),
+      body: JSON.stringify({ datasetId, receiptNumber, reason }),
       credentials: "include",
     });
+    clearReasonFor(`payout:${datasetId}`);
     load();
   };
 
   const clearStrikes = async (userId: string) => {
+    const reason = reasonFor(`account:${userId}`);
+    if (!reason) return;
     await fetch("/api/admin/clear-strikes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({ userId, reason }),
       credentials: "include",
     });
+    clearReasonFor(`account:${userId}`);
     load();
   };
 
-  const addStrike = async (userId: string, reason: string) => {
+  const addStrike = async (userId: string) => {
+    const reason = reasonFor(`account:${userId}`);
+    if (!reason) return;
     await fetch("/api/admin/add-strike", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, reason }),
       credentials: "include",
     });
+    clearReasonFor(`account:${userId}`);
     load();
   };
 
   const clearFlag = async (datasetId: string) => {
+    const reason = reasonFor(`flag:${datasetId}`);
+    if (!reason) return;
     await fetch("/api/admin/flag-override", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ datasetId }),
+      body: JSON.stringify({ datasetId, reason }),
       credentials: "include",
     });
+    clearReasonFor(`flag:${datasetId}`);
     load();
   };
 
@@ -163,10 +189,13 @@ export default function AdminDashboard() {
   };
 
   const staffAction = async (path: string, userId: string, body: any = {}) => {
+    const reason = reasonFor(`staff:${userId}`);
+    if (!reason) return;
     await fetch(path, {
       method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-      body: JSON.stringify({ userId, ...body }),
+      body: JSON.stringify({ userId, ...body, reason }),
     });
+    clearReasonFor(`staff:${userId}`);
     load();
   };
 
@@ -285,16 +314,23 @@ export default function AdminDashboard() {
 
                     {d.status === "Pending Review" && (
                       <>
-                        <button onClick={() => decideModeration(d.id, "approve")} style={btnStyle("#14532d", "#86efac")}>
+                        <input
+                          id={`admin-reason-moderation-${d.id}`}
+                          placeholder="Moderation reason"
+                          value={actionReasons[`moderation:${d.id}`] || ""}
+                          onChange={e => setReasonFor(`moderation:${d.id}`, e.target.value)}
+                          style={{ ...inputStyle, flex: "1 1 240px" }}
+                        />
+                        <button disabled={reasonFor(`moderation:${d.id}`).length < 8} onClick={() => decideModeration(d.id, "approve")} style={btnStyle("#14532d", "#86efac")}>
                           Approve Review
                         </button>
-                        <button onClick={() => decideModeration(d.id, "hold")} style={btnStyle("#3f2f12", "#fbbf24")}>
+                        <button disabled={reasonFor(`moderation:${d.id}`).length < 8} onClick={() => decideModeration(d.id, "hold")} style={btnStyle("#3f2f12", "#fbbf24")}>
                           Hold
                         </button>
-                        <button onClick={() => decideModeration(d.id, "correction")} style={btnStyle("#1e293b", "#93c5fd")}>
+                        <button disabled={reasonFor(`moderation:${d.id}`).length < 8} onClick={() => decideModeration(d.id, "correction")} style={btnStyle("#1e293b", "#93c5fd")}>
                           Request Correction
                         </button>
-                        <button onClick={() => decideModeration(d.id, "reject")} style={btnStyle("#7f1d1d", "#fca5a5")}>
+                        <button disabled={reasonFor(`moderation:${d.id}`).length < 8} onClick={() => decideModeration(d.id, "reject")} style={btnStyle("#7f1d1d", "#fca5a5")}>
                           Reject
                         </button>
                       </>
@@ -303,7 +339,14 @@ export default function AdminDashboard() {
                     {d.status === "Approved" && !d.payoutTransaction && (
                       <div id={`payout-step-queue-${d.id}`} style={payoutStepStyle}>
                         <span style={payoutStepLabel}>Step 1</span>
-                        <button onClick={() => approvePayout(d.id, d.userId, d.payoutAmount)} style={btnStyle("#14532d", "#86efac")}>
+                        <input
+                          id={`admin-reason-payout-${d.id}`}
+                          placeholder="Payout reason"
+                          value={actionReasons[`payout:${d.id}`] || ""}
+                          onChange={e => setReasonFor(`payout:${d.id}`, e.target.value)}
+                          style={{ ...inputStyle, width: 180 }}
+                        />
+                        <button disabled={reasonFor(`payout:${d.id}`).length < 8} onClick={() => approvePayout(d.id, d.userId, d.payoutAmount)} style={btnStyle("#14532d", "#86efac")}>
                           Queue Payout
                         </button>
                       </div>
@@ -312,7 +355,14 @@ export default function AdminDashboard() {
                     {d.status === "Approved" && d.payoutTransaction?.status === "PENDING" && (
                       <div id={`payout-step-disburse-${d.id}`} style={payoutStepStyle}>
                         <span style={payoutStepLabel}>Step 2</span>
-                        <button onClick={() => markDisbursed(d.id)} style={btnStyle("#1a3a1a", "#4ade80")}>Mark Disbursed</button>
+                        <input
+                          id={`admin-reason-disburse-${d.id}`}
+                          placeholder="Disbursement reason"
+                          value={actionReasons[`payout:${d.id}`] || ""}
+                          onChange={e => setReasonFor(`payout:${d.id}`, e.target.value)}
+                          style={{ ...inputStyle, width: 190 }}
+                        />
+                        <button disabled={reasonFor(`payout:${d.id}`).length < 8} onClick={() => markDisbursed(d.id)} style={btnStyle("#1a3a1a", "#4ade80")}>Mark Disbursed</button>
                       </div>
                     )}
 
@@ -325,7 +375,14 @@ export default function AdminDashboard() {
                           onChange={e => setReceiptInputs(p => ({ ...p, [d.id]: e.target.value }))}
                           style={{ ...inputStyle, width: 150, fontFamily: "monospace" }}
                         />
-                        <button onClick={() => addProof(d.id)} style={btnStyle("#1e293b", "#fbbf24")}>Add Receipt Proof</button>
+                        <input
+                          id={`admin-reason-proof-${d.id}`}
+                          placeholder="Proof reason"
+                          value={actionReasons[`payout:${d.id}`] || ""}
+                          onChange={e => setReasonFor(`payout:${d.id}`, e.target.value)}
+                          style={{ ...inputStyle, width: 170 }}
+                        />
+                        <button disabled={reasonFor(`payout:${d.id}`).length < 8} onClick={() => addProof(d.id)} style={btnStyle("#1e293b", "#fbbf24")}>Add Receipt Proof</button>
                       </div>
                     )}
 
@@ -383,7 +440,16 @@ export default function AdminDashboard() {
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{d.fullName || d.userId}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>Flag: <span style={{ color: "#fb923c", fontWeight: 700 }}>{d.dupStatus}</span></div>
                   </div>
-                  <button onClick={() => clearFlag(d.id)} style={btnStyle("#1a3a1a", "#4ade80")}>Clear Flag</button>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <input
+                      id={`admin-reason-flag-${d.id}`}
+                      placeholder="Flag override reason"
+                      value={actionReasons[`flag:${d.id}`] || ""}
+                      onChange={e => setReasonFor(`flag:${d.id}`, e.target.value)}
+                      style={{ ...inputStyle, flex: "1 1 220px" }}
+                    />
+                    <button disabled={reasonFor(`flag:${d.id}`).length < 8} onClick={() => clearFlag(d.id)} style={btnStyle("#1a3a1a", "#4ade80")}>Clear Flag</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -404,11 +470,18 @@ export default function AdminDashboard() {
                       {a.strikes}/4 strikes · flagged {a.flaggedAt?.slice(0, 10)}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => addStrike(a.userId, "Manual — admin")} style={btnStyle("#7c3a1e", "#fb923c")}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <input
+                      id={`admin-reason-account-${a.userId}`}
+                      placeholder="Strike/account reason"
+                      value={actionReasons[`account:${a.userId}`] || ""}
+                      onChange={e => setReasonFor(`account:${a.userId}`, e.target.value)}
+                      style={{ ...inputStyle, flex: "1 1 220px" }}
+                    />
+                    <button disabled={reasonFor(`account:${a.userId}`).length < 8} onClick={() => addStrike(a.userId)} style={btnStyle("#7c3a1e", "#fb923c")}>
                       +Strike
                     </button>
-                    <button onClick={() => clearStrikes(a.userId)} style={btnStyle("#1a3a1a", "#4ade80")}>
+                    <button disabled={reasonFor(`account:${a.userId}`).length < 8} onClick={() => clearStrikes(a.userId)} style={btnStyle("#1a3a1a", "#4ade80")}>
                       Clear All
                     </button>
                   </div>
@@ -467,9 +540,18 @@ export default function AdminDashboard() {
                   <div style={{ color: "#64748b", fontSize: 12 }}>{member.email} · {member.role}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {member.role !== "owner" && <button onClick={() => staffAction("/api/admin/staff/disable", member.id, { disabled: true })} style={btnStyle("#7f1d1d", "#fca5a5")}>Disable</button>}
-                  {member.role !== "owner" && <button onClick={() => staffAction("/api/admin/staff/disable", member.id, { disabled: false })} style={btnStyle("#1a3a1a", "#4ade80")}>Enable</button>}
-                  {member.role !== "owner" && <button onClick={() => staffAction("/api/admin/staff/revoke-sessions", member.id)} style={btnStyle("#3f2f12", "#fbbf24")}>Revoke Sessions</button>}
+                  {member.role !== "owner" && (
+                    <input
+                      id={`admin-reason-staff-${member.id}`}
+                      placeholder="Staff action reason"
+                      value={actionReasons[`staff:${member.id}`] || ""}
+                      onChange={e => setReasonFor(`staff:${member.id}`, e.target.value)}
+                      style={{ ...inputStyle, flex: "1 1 220px" }}
+                    />
+                  )}
+                  {member.role !== "owner" && <button disabled={reasonFor(`staff:${member.id}`).length < 8} onClick={() => staffAction("/api/admin/staff/disable", member.id, { disabled: true })} style={btnStyle("#7f1d1d", "#fca5a5")}>Disable</button>}
+                  {member.role !== "owner" && <button disabled={reasonFor(`staff:${member.id}`).length < 8} onClick={() => staffAction("/api/admin/staff/disable", member.id, { disabled: false })} style={btnStyle("#1a3a1a", "#4ade80")}>Enable</button>}
+                  {member.role !== "owner" && <button disabled={reasonFor(`staff:${member.id}`).length < 8} onClick={() => staffAction("/api/admin/staff/revoke-sessions", member.id)} style={btnStyle("#3f2f12", "#fbbf24")}>Revoke Sessions</button>}
                 </div>
               </div>
             ))}

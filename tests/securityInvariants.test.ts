@@ -73,11 +73,15 @@ test("admin payout proof follows queue then disburse then proof order", () => {
   assert.match(adminDatasetRoute, /receiptNumber/);
   assert.match(adminDatasetRoute, /proofAddedAt/);
   assert.match(proofRoute, /Payout must be marked disbursed before receipt proof can be added/);
+  assert.match(proofRoute, /Admin reason is required for payout proof/);
   assert.match(proofRoute, /txs\[0\]\.status !== "DISBURSED"/);
   assert.match(adminDashboard, /payout-step-queue-/);
   assert.match(adminDashboard, /payout-step-disburse-/);
   assert.match(adminDashboard, /payout-step-proof-/);
   assert.match(adminDashboard, /payout-step-complete-/);
+  assert.match(adminDashboard, /admin-reason-payout-/);
+  assert.match(adminDashboard, /admin-reason-disburse-/);
+  assert.match(adminDashboard, /admin-reason-proof-/);
   assert.match(adminDashboard, /Add Receipt Proof/);
 });
 
@@ -141,6 +145,10 @@ test("staff lifecycle routes enforce role boundaries and disabled sessions", () 
   assert.match(server, /app\.post\("\/api\/admin\/staff\/revoke-sessions", requireRole\("admin", "owner"\)/);
   assert.match(server, /app\.post\("\/api\/staff\/invite\/accept"/);
   assert.match(server, /if \(isUserDisabled\(session\.user\.id\)\) return res\.status\(403\)/);
+  assert.match(server, /Admin reason is required for staff status changes/);
+  assert.match(server, /Admin reason is required for staff session revocation/);
+  assert.match(adminDashboard, /admin-reason-staff-/);
+  assert.match(adminDashboard, /disabled=\{reasonFor\(`staff:\$\{member\.id\}`\)\.length < 8\}/);
 });
 
 test("voice waitlist uses the server and not browser-only persistence", () => {
@@ -157,11 +165,30 @@ test("AI evaluation is bounded and has deterministic fallback", () => {
 
 test("moderation decisions retain before and after state and expose evidence", () => {
   assert.match(server, /const before = \{ status: dataset\.status, payoutAmount: dataset\.payoutAmount, metadata: dataset\.metadata \}/);
+  assert.match(server, /Moderation reason is required/);
   assert.match(server, /after: \{ status: updated\?\.status, payoutAmount: updated\?\.payoutAmount, metadata: updated\?\.metadata \}/);
+  assert.match(adminDashboard, /admin-reason-moderation-/);
+  assert.match(adminDashboard, /disabled=\{reasonFor\(`moderation:\$\{d\.id\}`\)\.length < 8\}/);
   assert.match(adminDashboard, /Review Evidence/);
   assert.match(adminDashboard, /Context signals/);
   assert.match(adminDashboard, /Score evidence/);
   assert.match(adminDashboard, /Payout tiers/);
+});
+
+test("admin high-impact actions require explicit reasons", () => {
+  assert.match(server, /function requiredAdminReason/);
+  assert.match(server, /Admin reason is required for payout queueing/);
+  assert.match(server, /Admin reason is required before marking payout disbursed/);
+  assert.match(server, /Admin reason is required for flag override/);
+  assert.match(server, /Admin reason is required for clearing strikes/);
+  assert.match(server, /Admin reason is required for manual strikes/);
+  assert.match(server, /payout_queued/);
+  assert.match(server, /JSON\.stringify\(\{ reason/);
+  assert.match(adminDashboard, /const \[actionReasons, setActionReasons\]/);
+  assert.match(adminDashboard, /admin-reason-flag-/);
+  assert.match(adminDashboard, /admin-reason-account-/);
+  assert.match(adminDashboard, /reasonFor\(`account:\$\{a\.userId\}`\)\.length < 8/);
+  assert.doesNotMatch(adminDashboard, /Admin dashboard decision:|Manual — admin/);
 });
 
 test("admin staff invites use a form instead of browser prompts", () => {

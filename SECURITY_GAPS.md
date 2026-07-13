@@ -58,6 +58,7 @@ These records should not be rewritten or deleted during normal fixes. Add new ro
 | FIX-011 | `[?] Needs proof` | Contributor receipts/status return path | Added owner-scoped `/api/my-submissions`, contributor `My Submissions` tab, and masked account-code display. | Local source: `db.ts`, `server.ts`, `src/App.tsx`, `src/components/MySubmissions.tsx`, `src/components/FileProcessor.tsx`; unit invariant test. Browser/live proof still required. |
 | FIX-012 | `[?] Needs proof` | MindWave buyer payout model | Updated payout version to `c2c-payout-v5-mindwave-buyer` with JMD 25/50/75/100/125 tier rates and JMD 200 max displayed rate per accepted pair. | Local source: `lib/contextGrading.ts`, `LandingHero.tsx`, `HelpFaq.tsx`; unit test. Browser/live proof still required. |
 | FIX-013 | `[?] Needs proof` | Profile validation and ID image retention | Added server-side profile validation, stores only a one-way `verified-hash:v1` ID marker for new multiplier opt-ins, strips `idPhoto` from profile responses, and removed public merchant account config. | Local source: `server.ts`; unit invariant tests. Browser/API proof and legacy row cleanup still required. |
+| FIX-014 | `[?] Needs proof` | Admin action reason enforcement | High-impact admin actions now require inline dashboard reasons and server-side reason validation before moderation, payout queue/disburse/proof, flag override, strike, and staff disable/revoke actions. | Local source: `server.ts`, `AdminDashboard.tsx`; unit invariant test. Browser/live proof still required. |
 
 ## Open Gaps
 
@@ -108,3 +109,4 @@ Add proof entries here as items are closed.
 | 2026-07-13 | FIX-013 | Hardened profile update validation, ID image retention, safe `/api/me` profile response, and public config shape. |
 | 2026-07-13 | SEC-012, SEC-017, SEC-019 | Hardened maintenance backfill script with dry-run default, explicit `--apply`, DB backup, transaction writes, current buyer-pricing backfill, and legacy base64 ID-photo migration. Temp-DB dry run listed one zero-price dataset and one legacy ID photo, then left both rows unchanged. |
 | 2026-07-13 | FIX-012, UX-015 | Text-chat payouts now use v5 JMD buyer pricing and JMD settlement for launch; profile country no longer implies TT/BB/USD payout currency. |
+| 2026-07-13 | FIX-014 | Added explicit admin reason enforcement and audit notes for high-impact admin actions. |

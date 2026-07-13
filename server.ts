@@ -145,6 +145,11 @@ function payoutProfileRequiredMessage() {
   return "Finish your payout profile before final submission. You can preview and download anonymized JSON without WiPay details, but paid dataset submission requires a WiPay account reference and payout link.";
 }
 
+function requiredAdminReason(value: any) {
+  const reason = String(value || "").trim();
+  return reason.length >= 8 ? reason.slice(0, 500) : "";
+}
+
 // Cascading AI evaluator: Oreluwa (RunPod) → DeepSeek → local heuristics
 async function runAIEvaluation(prompt: string): Promise<any | null> {
   // Tier 1 — Oreluwa on RunPod (self-hosted, cost-efficient at scale)
@@ -1415,11 +1420,15 @@ app.post("/api/payout-requests", requireSession, (req: any, res) => {
 
 // Returns the contributor's WiPay payout link for admin to manually disburse
 // No merchant API key needed — WiPay provides a payout link per contributor
-app.post("/api/payouts", requireAdmin, (req, res) => {
+app.post("/api/payouts", requireAdmin, (req: any, res) => {
   const { datasetId } = req.body;
+  const reason = requiredAdminReason(req.body.reason);
 
   if (!datasetId) {
     return res.status(400).json({ error: "Missing datasetId." });
+  }
+  if (!reason) {
+    return res.status(400).json({ error: "Admin reason is required for payout queueing." });
   }
 
   const dataset = database.getDataset(datasetId);
@@ -1458,6 +1467,12 @@ app.post("/api/payouts", requireAdmin, (req, res) => {
 
   database.createTransaction(transaction);
   database.updateDataset(datasetId, { status: "Approved" });
+  database.addAuditLog("payout_queued", req.session?.user?.id || null, datasetId, JSON.stringify({
+    reason,
+    amount: dataset.payoutAmount,
+    currency: dataset.currency || "JMD",
+    userId,
+  }));
 
   res.json({
     success: true,
@@ -1469,6 +1484,8 @@ app.post("/api/payouts", requireAdmin, (req, res) => {
 
 app.post("/api/admin/payout-approve", requireAdmin, (req: any, res) => {
   const { datasetId } = req.body;
+  const reason = requiredAdminReason(req.body.reason);
+  if (!reason) return res.status(400).json({ error: "Admin reason is required before marking payout disbursed." });
   const dataset = database.getDataset(datasetId);
   if (!dataset) {
     return res.status(404).json({ error: "Dataset not found." });
@@ -1482,7 +1499,7 @@ app.post("/api/admin/payout-approve", requireAdmin, (req: any, res) => {
 
   database.updateTransactionStatus(transactions[0].id, "DISBURSED");
   database.updateDataset(datasetId, { status: "Disbursed" });
-  database.addAuditLog("payout_disbursed", req.session?.user?.id || null, datasetId);
+  database.addAuditLog("payout_disbursed", req.session?.user?.id || null, datasetId, JSON.stringify({ reason, transactionId: transactions[0].id }));
 
   res.json({
     success: true,
@@ -1695,8 +1712,10 @@ app.post("/api/admin/staff/role", requireRole("owner"), (req: any, res) => {
 
 app.post("/api/admin/staff/disable", requireRole("admin", "owner"), (req: any, res) => {
   try {
+    const reason = requiredAdminReason(req.body.reason);
+    if (!reason) return res.status(400).json({ error: "Admin reason is required for staff status changes." });
     setStaffDisabled(req.body.userId, Boolean(req.body.disabled));
-    database.addAuditLog("staff_status_changed", req.session.user.id, req.body.userId, JSON.stringify({ disabled: Boolean(req.body.disabled) }));
+    database.addAuditLog("staff_status_changed", req.session.user.id, req.body.userId, JSON.stringify({ disabled: Boolean(req.body.disabled), reason }));
     res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message || "Staff status update failed." });
@@ -1705,8 +1724,10 @@ app.post("/api/admin/staff/disable", requireRole("admin", "owner"), (req: any, r
 
 app.post("/api/admin/staff/revoke-sessions", requireRole("admin", "owner"), (req: any, res) => {
   try {
+    const reason = requiredAdminReason(req.body.reason);
+    if (!reason) return res.status(400).json({ error: "Admin reason is required for staff session revocation." });
     const count = revokeUserSessions(req.body.userId);
-    database.addAuditLog("staff_sessions_revoked", req.session.user.id, req.body.userId, JSON.stringify({ count }));
+    database.addAuditLog("staff_sessions_revoked", req.session.user.id, req.body.userId, JSON.stringify({ count, reason }));
     res.json({ success: true, revoked: count });
   } catch (err: any) {
     res.status(400).json({ error: err.message || "Session revocation failed." });
@@ -1733,6 +1754,8 @@ app.post("/api/moderation/decision", requireRole("moderator", "admin", "owner"),
   if (!datasetId || !allowed.includes(decision)) {
     return res.status(400).json({ error: "datasetId and a valid moderation decision are required." });
   }
+  const cleanReason = requiredAdminReason(reason);
+  if (!cleanReason) return res.status(400).json({ error: "Moderation reason is required." });
   const dataset = database.getDataset(datasetId);
   if (!dataset) return res.status(404).json({ error: "Dataset not found." });
   const before = { status: dataset.status, payoutAmount: dataset.payoutAmount, metadata: dataset.metadata };
@@ -1747,7 +1770,7 @@ app.post("/api/moderation/decision", requireRole("moderator", "admin", "owner"),
   const updated = database.getDataset(datasetId);
   database.addAuditLog("moderation_decision", req.session.user.id, datasetId, JSON.stringify({
     decision,
-    reason: reason || "",
+    reason: cleanReason,
     before,
     after: { status: updated?.status, payoutAmount: updated?.payoutAmount, metadata: updated?.metadata },
   }));
@@ -1776,14 +1799,16 @@ app.get("/api/admin/export-all", requireAdmin, (_req, res) => {
 // ── Admin: Add proof of payment ────────────────────────────────────────────
 app.post("/api/admin/payout-proof", requireAdmin, async (req: any, res) => {
   const { datasetId, receiptNumber } = req.body;
+  const reason = requiredAdminReason(req.body.reason);
   if (!datasetId || !receiptNumber) return res.status(400).json({ error: "Missing fields." });
+  if (!reason) return res.status(400).json({ error: "Admin reason is required for payout proof." });
 
   const txs = database.getTransactionsByDataset(datasetId);
   if (!txs.length) return res.status(404).json({ error: "No transaction found for this dataset." });
   if (txs[0].status !== "DISBURSED") return res.status(409).json({ error: "Payout must be marked disbursed before receipt proof can be added." });
 
   database.addPayoutProof(txs[0].id, receiptNumber);
-  database.addAuditLog("proof_added", req.session?.user?.id || null, datasetId, `Receipt: ${receiptNumber}`);
+  database.addAuditLog("proof_added", req.session?.user?.id || null, datasetId, JSON.stringify({ receiptNumber, reason }));
   res.json({ success: true });
 });
 
@@ -1795,9 +1820,11 @@ app.get("/api/admin/flagged", requireAdmin, (_req, res) => {
 // ── Admin: Override flag ───────────────────────────────────────────────────
 app.post("/api/admin/flag-override", requireAdmin, async (req: any, res) => {
   const { datasetId } = req.body;
+  const reason = requiredAdminReason(req.body.reason);
   if (!datasetId) return res.status(400).json({ error: "Missing datasetId." });
+  if (!reason) return res.status(400).json({ error: "Admin reason is required for flag override." });
   database.clearFlag(datasetId);
-  database.addAuditLog("flag_override", req.session?.user?.id || null, datasetId);
+  database.addAuditLog("flag_override", req.session?.user?.id || null, datasetId, JSON.stringify({ reason }));
   res.json({ success: true });
 });
 
@@ -1814,18 +1841,22 @@ app.get("/api/admin/flagged-accounts", requireAdmin, (_req, res) => {
 // ── Admin: Clear strikes on an account ────────────────────────────────────
 app.post("/api/admin/clear-strikes", requireAdmin, async (req: any, res) => {
   const { userId } = req.body;
+  const reason = requiredAdminReason(req.body.reason);
   if (!userId) return res.status(400).json({ error: "Missing userId." });
+  if (!reason) return res.status(400).json({ error: "Admin reason is required for clearing strikes." });
   database.clearStrikes(userId);
-  database.addAuditLog("strikes_cleared", req.session?.user?.id || null, userId);
+  database.addAuditLog("strikes_cleared", req.session?.user?.id || null, userId, JSON.stringify({ reason }));
   res.json({ success: true });
 });
 
 // ── Admin: Manually add a strike to an account ────────────────────────────
 app.post("/api/admin/add-strike", requireAdmin, async (req: any, res) => {
   const { userId, reason } = req.body;
+  const cleanReason = requiredAdminReason(reason);
   if (!userId) return res.status(400).json({ error: "Missing userId." });
+  if (!cleanReason) return res.status(400).json({ error: "Admin reason is required for manual strikes." });
   const { strikes, flagged } = database.addStrike(userId);
-  database.addAuditLog("strike_added_by_admin", req.session?.user?.id || null, userId, reason || `Manual strike — ${strikes}/4${flagged ? " — ACCOUNT FLAGGED" : ""}`);
+  database.addAuditLog("strike_added_by_admin", req.session?.user?.id || null, userId, JSON.stringify({ reason: cleanReason, strikes, flagged }));
   res.json({ success: true, strikes, accountFlagged: flagged });
 });
 
