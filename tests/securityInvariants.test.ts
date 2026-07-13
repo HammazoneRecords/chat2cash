@@ -59,6 +59,28 @@ test("admin payout cannot trust client owner or amount and disbursement is idemp
   assert.match(server, /if \(dataset\.status === "Disbursed" \|\| transactions\[0\]\.status === "DISBURSED"\)/);
 });
 
+test("admin payout proof follows queue then disburse then proof order", () => {
+  const adminDatasetRoute = server.slice(
+    server.indexOf('app.get("/api/admin/datasets"'),
+    server.indexOf('app.get("/api/admin/staff"'),
+  );
+  const proofRoute = server.slice(
+    server.indexOf('app.post("/api/admin/payout-proof"'),
+    server.indexOf("// ── Admin: Flagged submissions"),
+  );
+
+  assert.match(adminDatasetRoute, /payoutTransaction/);
+  assert.match(adminDatasetRoute, /receiptNumber/);
+  assert.match(adminDatasetRoute, /proofAddedAt/);
+  assert.match(proofRoute, /Payout must be marked disbursed before receipt proof can be added/);
+  assert.match(proofRoute, /txs\[0\]\.status !== "DISBURSED"/);
+  assert.match(adminDashboard, /payout-step-queue-/);
+  assert.match(adminDashboard, /payout-step-disburse-/);
+  assert.match(adminDashboard, /payout-step-proof-/);
+  assert.match(adminDashboard, /payout-step-complete-/);
+  assert.match(adminDashboard, /Add Receipt Proof/);
+});
+
 test("contributor payout review request cannot create payout transaction or approval", () => {
   const requestSection = server.slice(
     server.indexOf('app.post("/api/payout-requests"'),
@@ -281,7 +303,7 @@ test("maintenance backfill is dry-run by default and can migrate legacy ID photo
   assert.match(backfillScript, /db\.transaction/);
   assert.match(backfillScript, /WHERE idPhoto LIKE 'data:image\/%;base64,%'/);
   assert.match(backfillScript, /verified-hash:v1:\$\{digest\}/);
-  assert.match(backfillScript, /payoutVersion = metadata\.payoutVersion \|\| "c2c-payout-v4-mindwave-buyer"/);
+  assert.match(backfillScript, /payoutVersion = metadata\.payoutVersion \|\| "c2c-payout-v5-mindwave-buyer"/);
   assert.match(backfillScript, /rate: 10/);
   assert.doesNotMatch(backfillScript, /update\.run\(amount|units \* 0\.5|payoutRatePerUsefulLine \|\| 0\.5/);
 });

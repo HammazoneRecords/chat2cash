@@ -37,9 +37,9 @@ test("calculates tiered payout with multiplier", () => {
     { tier: "language", units: 2 },
     { tier: "rejected", units: 4 },
   ], 2);
-  assert.equal(payout.total, 195);
-  assert.equal(payout.version, "c2c-payout-v4-mindwave-buyer");
-  assert.equal(payout.maxRatePerPair, 75);
+  assert.equal(payout.total, 500);
+  assert.equal(payout.version, "c2c-payout-v5-mindwave-buyer");
+  assert.equal(payout.maxRatePerPair, 200);
 });
 
 test("canonical JSON ignores client grading fields and hashes stable text", () => {

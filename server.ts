@@ -1220,7 +1220,7 @@ Respond strictly in valid JSON:
 
     const tierInputs = buildDialoguePayoutInputs(dialogues, grades);
     const payout = calculateTieredPayout(tierInputs, (profile as any).demographicOptIn ? 2 : 1);
-    // MindWave buyer payout: JMD $10-$75 per accepted dialogue pair by value tier.
+    // MindWave buyer payout: JMD $25-$200 per accepted dialogue pair by value tier.
     const payoutAmount = payout.total;
     const ratePerPair = averageAcceptedRate(payout);
     const currency = profile.country === "JM" ? "JMD" : profile.country === "BB" ? "BBD" : "TTD";
@@ -1628,7 +1628,20 @@ app.post("/api/admin/auth", async (req, res) => {
 
 // ── Admin: Dataset list ────────────────────────────────────────────────────
 app.get("/api/admin/datasets", requireAdmin, (_req, res) => {
-  res.json(database.getAllDatasetsAdmin());
+  const datasets = database.getAllDatasetsAdmin().map((dataset: any) => {
+    const transactions = database.getTransactionsByDataset(dataset.id);
+    const latestTransaction = transactions[0] || null;
+    return {
+      ...dataset,
+      payoutTransaction: latestTransaction ? {
+        id: latestTransaction.id,
+        status: latestTransaction.status,
+        receiptNumber: latestTransaction.receiptNumber || null,
+        proofAddedAt: latestTransaction.proofAddedAt || null,
+      } : null,
+    };
+  });
+  res.json(datasets);
 });
 
 app.get("/api/admin/staff", requireRole("admin", "owner"), (_req, res) => {
@@ -1766,6 +1779,7 @@ app.post("/api/admin/payout-proof", requireAdmin, async (req: any, res) => {
 
   const txs = database.getTransactionsByDataset(datasetId);
   if (!txs.length) return res.status(404).json({ error: "No transaction found for this dataset." });
+  if (txs[0].status !== "DISBURSED") return res.status(409).json({ error: "Payout must be marked disbursed before receipt proof can be added." });
 
   database.addPayoutProof(txs[0].id, receiptNumber);
   database.addAuditLog("proof_added", req.session?.user?.id || null, datasetId, `Receipt: ${receiptNumber}`);

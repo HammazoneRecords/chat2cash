@@ -6,6 +6,7 @@ type Dataset = {
   currency: string; createdAt: string; dupStatus: string;
   fullName: string; email: string; wipayLink: string;
   metadata: any; dialogues: any[];
+  payoutTransaction?: { id: string; status: string; receiptNumber?: string | null; proofAddedAt?: string | null } | null;
 };
 
 type FlaggedDataset = Dataset & { dupStatus: "duplicate" | "partial" | "flagged" };
@@ -299,25 +300,40 @@ export default function AdminDashboard() {
                       </>
                     )}
 
-                    {d.status === "Approved" && (
-                      <>
+                    {d.status === "Approved" && !d.payoutTransaction && (
+                      <div id={`payout-step-queue-${d.id}`} style={payoutStepStyle}>
+                        <span style={payoutStepLabel}>Step 1</span>
                         <button onClick={() => approvePayout(d.id, d.userId, d.payoutAmount)} style={btnStyle("#14532d", "#86efac")}>
                           Queue Payout
                         </button>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <input
-                            placeholder="Receipt #"
-                            value={receiptInputs[d.id] || ""}
-                            onChange={e => setReceiptInputs(p => ({ ...p, [d.id]: e.target.value }))}
-                            style={{
-                              padding: "4px 10px", background: "#0d1527", border: "1px solid #1e293b",
-                              borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: "monospace", width: 130,
-                            }}
-                          />
-                          <button onClick={() => addProof(d.id)} style={btnStyle("#1e293b", "#fbbf24")}>Add Proof</button>
-                        </div>
+                      </div>
+                    )}
+
+                    {d.status === "Approved" && d.payoutTransaction?.status === "PENDING" && (
+                      <div id={`payout-step-disburse-${d.id}`} style={payoutStepStyle}>
+                        <span style={payoutStepLabel}>Step 2</span>
                         <button onClick={() => markDisbursed(d.id)} style={btnStyle("#1a3a1a", "#4ade80")}>Mark Disbursed</button>
-                      </>
+                      </div>
+                    )}
+
+                    {d.status === "Disbursed" && !d.payoutTransaction?.receiptNumber && (
+                      <div id={`payout-step-proof-${d.id}`} style={{ ...payoutStepStyle, flex: "1 1 260px" }}>
+                        <span style={payoutStepLabel}>Step 3</span>
+                        <input
+                          placeholder="WiPay receipt #"
+                          value={receiptInputs[d.id] || ""}
+                          onChange={e => setReceiptInputs(p => ({ ...p, [d.id]: e.target.value }))}
+                          style={{ ...inputStyle, width: 150, fontFamily: "monospace" }}
+                        />
+                        <button onClick={() => addProof(d.id)} style={btnStyle("#1e293b", "#fbbf24")}>Add Receipt Proof</button>
+                      </div>
+                    )}
+
+                    {d.payoutTransaction?.receiptNumber && (
+                      <div id={`payout-step-complete-${d.id}`} style={{ ...payoutStepStyle, color: "#86efac" }}>
+                        <span style={payoutStepLabel}>Complete</span>
+                        <span style={{ fontFamily: "monospace", fontSize: 12 }}>Receipt {d.payoutTransaction.receiptNumber}</span>
+                      </div>
                     )}
                   </div>
 
@@ -506,4 +522,23 @@ const inputStyle = {
   fontSize: 12,
   padding: "8px 10px",
   minWidth: 0,
+};
+
+const payoutStepStyle = {
+  display: "flex",
+  alignItems: "center",
+  flexWrap: "wrap" as const,
+  gap: 6,
+  padding: "6px 8px",
+  border: "1px solid #1e293b",
+  borderRadius: 8,
+  background: "#050810",
+};
+
+const payoutStepLabel = {
+  color: "#64748b",
+  fontSize: 10,
+  fontWeight: 800,
+  textTransform: "uppercase" as const,
+  letterSpacing: 0.7,
 };

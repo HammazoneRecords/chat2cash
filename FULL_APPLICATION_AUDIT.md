@@ -12,7 +12,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 - Infrastructure files: `Dockerfile`, `.env.example`, `package.json`, `scripts/release-gate.ps1`, `scripts/api-smoke.ps1`.
 - Verification commands:
   - `corepack pnpm audit --audit-level moderate` -> no known vulnerabilities found.
-  - `corepack pnpm test:release` -> passed: typecheck, 42 unit/security/database/responsive tests, production build, API smoke.
+  - `corepack pnpm test:release` -> passed: typecheck, 43 unit/security/database/responsive tests, production build, API smoke.
 
 ## Confirmed Working
 
@@ -25,7 +25,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | JSON tamper resistance | Working | `validateCanonicalJson` and `/api/submit-json-draft` recompute hashes, grading, duplicate status, payout, and ownership from the session. | Continue ignoring client score, payout, role, status, and identity fields. |
 | Duplicate policy | Working | Full duplicate and all-pair duplicate paths strike cross-user duplicates; same-user full duplicate is idempotent. | Keep pre-submit warnings visible before final submit. |
 | Payout model | Working | `PAYOUT_VERSION = c2c-payout-v4-mindwave-buyer`; tier rates are capped at JMD 75 per accepted pair. | Keep copy and stored metadata versioned together. |
-| Release gate | Working | `corepack pnpm test:release` passed on 2026-07-13 with 42 tests, production build, and API smoke. | Keep release gate required before deploy. |
+| Release gate | Working | `corepack pnpm test:release` passed on 2026-07-13 with 43 tests, production build, and API smoke. | Keep release gate required before deploy. |
 | Dependency audit | Working | `corepack pnpm audit --audit-level moderate` returned no known vulnerabilities. | Re-run before launch/deploy. |
 
 ## Post-Audit Fix Progress
@@ -47,6 +47,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | SEC-012/SEC-017/SEC-019 | Fixed locally | Maintenance backfill script is dry-run by default, requires `--apply`, creates DB backups, wraps writes in a transaction, uses current buyer-pricing metadata, and migrates legacy base64 ID photos to hash markers. | `scripts/backfill-zero-pricing.cjs`, `tests/securityInvariants.test.ts`. | Run against a copied/live DB and record dry-run/apply proof. |
 | AUD-019 | Fixed locally | Upload entry now explains upload -> review/download -> submit and includes a WhatsApp `Without Media` export checklist; unsupported/empty/invalid ZIP errors point users back to the correct export flow. | `src/components/FileProcessor.tsx`, `tests/securityInvariants.test.ts`. | Browser/mobile proof still required. |
 | UX-022 | Fixed locally | Staff invite now uses an inline email/role form with validation and one-time invite link/expiry display instead of browser prompts. | `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin staff-tab proof still required. |
+| AUD-011/UX-023 | Fixed locally | Admin payout workflow now exposes transaction state and shows ordered queue -> disburse -> proof steps; `/api/admin/payout-proof` rejects proof before disbursement. | `server.ts`, `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin payout proof still required. |
 
 ## Critical Findings
 
@@ -67,7 +68,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-008 | High | Rate limiting | In-memory rate limiting is global, IP-based, and not production durable. | `requestCounts` Map; comment says not suitable for multi-process. | Add proxy-aware durable limits for auth, uploads, admin, payout, staff, and waitlist. | Burst tests throttle per route and survive restart or are documented single-process constraints. |
 | AUD-009 | Medium | Profile update validation | Fixed locally: `/api/profile/update` validates phone, WiPay account/link, country, town, age, gender, optional education fields, and ID image type/size. | `server.ts`; `tests/securityInvariants.test.ts`. | Add runtime API tests with valid/invalid payloads. | Invalid WiPay URL/country/oversized ID image returns 400. |
 | AUD-010 | Medium | Public config | Fixed locally: `/api/config` no longer returns the merchant account value. | `server.ts`; `tests/securityInvariants.test.ts`. | Add deployed API proof. | Public config exposes only booleans or safe display values. |
-| AUD-011 | Medium | Payout proof order | Admin can add proof before marking disbursed; UI exposes queue/proof/disburse in one row. | `/api/admin/payout-proof` requires a transaction but not `Disbursed`; `AdminDashboard.tsx` shows all Approved payout controls together. | Enforce ordered state transitions or clearly allow proof-before-disbursement with labels. | UI/API order is approve -> queue payout -> disburse -> add proof, or the alternative is documented and tested. |
+| AUD-011 | Medium | Payout proof order | Fixed locally: proof requires a disbursed transaction, and admin rows expose one next payout step at a time. | `server.ts`, `AdminDashboard.tsx`; invariant test. | Browser/live proof still required. | UI/API order is approve -> queue payout -> disburse -> add proof. |
 | AUD-012 | Medium | Audit detail | Some admin actions log limited before/after/reason data. | Staff and strike endpoints log action notes, but not all before/after state. | Standardize audit schema for actor, target, action, reason, before, after. | Audit log shows attributable before/after for moderation, staff, strikes, payout, and proof. |
 | AUD-013 | Medium | Legacy dead code | `/api/profile` returns 410 but leaves unreachable legacy creation code below return. | `server.ts` has dead code after `return res.status(410)`. | Remove dead code to reduce confusion and audit surface. | Route still returns 410; no unreachable profile creation code remains. |
 | AUD-014 | Medium | Stats semantics | Public stats use all datasets and transaction sum, not necessarily disbursed-only public payout language. | `db.ts getStats()` counts all datasets and sums all JMD transactions. | Decide if stats mean submitted, approved, or paid; align Overview/Ledger copy. | Stats labels match query semantics. |
@@ -120,7 +121,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | Date | Item | Proof |
 |---|---|---|
 | 2026-07-13 | Dependency audit | `corepack pnpm audit --audit-level moderate` -> no known vulnerabilities found. |
-| 2026-07-13 | Local release gate | `corepack pnpm test:release` -> passed typecheck, 42 tests, production build, API smoke. |
+| 2026-07-13 | Local release gate | `corepack pnpm test:release` -> passed typecheck, 43 tests, production build, API smoke. |
 | 2026-07-13 | AUD-005 admin exports | Added `c2c-training-export-v1` safe export contract and invariant test. |
 | 2026-07-13 | AUD-015/AUD-017 contributor return + masked account code | Added owner-scoped submissions API/UI, masked account code in nav/upload, and invariant coverage. |
 | 2026-07-13 | Payout model v4 | Raised MindWave buyer text-chat rates to JMD 10/20/30/45/60 by tier with JMD 75 max displayed rate per accepted pair. |
@@ -131,3 +132,4 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | 2026-07-13 | AUD-016 signup friction | Allowed preview accounts without WiPay details while keeping final submission and admin payout queue blocked until payout profile is complete. |
 | 2026-07-13 | UX-014 standard payout without ID | Added clear standard-payout/no-photo-ID copy and multiplier-only ID wording to signup. |
 | 2026-07-13 | UX-022 staff invite UX | Replaced staff invite browser prompts with an inline form, role selector, validation, and invite-link result display. |
+| 2026-07-13 | AUD-011/UX-023 payout proof order | Added admin transaction summary, ordered queue/disburse/proof UI, and server rejection for proof before disbursement. |

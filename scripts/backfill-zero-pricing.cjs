@@ -42,10 +42,10 @@ function buildPricingBackfills() {
     metadata.suitabilityScore = metadata.suitabilityScore ?? 50;
     metadata.payoutRatePerUsefulLine = metadata.payoutRatePerUsefulLine || 10;
     metadata.totalUsefulLines = metadata.totalUsefulLines || units;
-    metadata.payoutVersion = metadata.payoutVersion || "c2c-payout-v4-mindwave-buyer";
+    metadata.payoutVersion = metadata.payoutVersion || "c2c-payout-v5-mindwave-buyer";
     metadata.evaluationSummary = `${metadata.evaluationSummary || ""} Backfilled with baseline conversational pricing after launch buyer-pricing fix.`.trim();
     metadata.payout = metadata.payout || {
-      version: "c2c-payout-v4-mindwave-buyer",
+      version: "c2c-payout-v5-mindwave-buyer",
       breakdown: [{ tier: "conversational", units, rate: 10, effectiveRate: 10, amount }],
       multiplier: 1,
       maxRatePerPair: 75,
