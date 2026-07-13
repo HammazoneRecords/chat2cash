@@ -54,6 +54,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | UX-026 | Fixed locally | Voice-note surfaces now frame audio as waitlist/future program only; exact voice payout amounts and premium-tier framing were removed from landing/FAQ copy. | `src/components/LandingHero.tsx`, `src/components/HelpFaq.tsx`, `tests/securityInvariants.test.ts`. | Browser/live landing proof still required. |
 | UX-016 | Fixed locally | Login and registration errors now map common auth/profile failures to safe recovery guidance for wrong password, existing email, profile load, and profile field correction. | `src/components/LoginForm.tsx`, `src/components/RegistrationForm.tsx`, `tests/securityInvariants.test.ts`. | Browser/live failed-auth proof still required. |
 | UX-019/AUD-014 | Fixed locally | Public stats now expose `totalPayoutsUnderReviewJMD` from dataset payout amounts and the landing card labels it as `Payouts Under Review`, while `totalPaidJMD` remains actual transaction-based paid totals. | `db.ts`, `src/components/LandingHero.tsx`, `tests/securityInvariants.test.ts`. | Browser/live Overview-vs-Ledger proof still required. |
+| UX-027 | Fixed locally | Removed the duplicate inline voice email form and routes voice interest through one modal waitlist path; Step 04 now reinforces that text-chat upload is the paid launch flow. | `src/components/LandingHero.tsx`, `tests/securityInvariants.test.ts`. | Browser/live landing proof still required. |
 
 ## Critical Findings
 
@@ -91,7 +92,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-019 | Medium | Upload guidance | Fixed locally: upload entry explains ZIP/TXT raw exports, JSON review uploads, download-before-submit, final submit behavior, and exact WhatsApp `Without Media` export steps. | `FileProcessor.tsx`; invariant test. | Browser/mobile proof still required. | Bad ZIP/no TXT error includes exact re-export instructions. |
 | AUD-020 | Medium | Admin UX | Fixed locally: moderation, strike, payout, flag override, and staff disable/revoke controls require explicit inline reasons and the API rejects missing reasons. | `AdminDashboard.tsx`; `server.ts`; invariant test. | Browser-test admin action flows after deploy. | High-impact actions require confirmation context and reason before POST. |
 | AUD-021 | Medium | Admin mobile | Admin dashboard inline layout is not browser-verified at mobile widths. | Source uses inline styles and dense rows; no browser evidence here. | Run Playwright/browser checks at 320/375/390/768/desktop and fix wrapping. | No horizontal clipping; controls remain usable. |
-| AUD-022 | Medium | Voice/waitlist positioning | Partially fixed locally: voice is labeled waitlist-only/future audio and no longer shows specific voice payout amounts. The page still has multiple voice CTAs. | `LandingHero.tsx` has multiple voice waitlist surfaces; backend `/api/waitlist`. | Browser-test whether the remaining CTAs distract from text-chat launch, then collapse if needed. | User cannot mistake waitlist for available voice upload. |
+| AUD-022 | Medium | Voice/waitlist positioning | Fixed locally: voice is labeled waitlist-only/future audio, specific payout amounts were removed, and the duplicate inline Step 04 email form was collapsed into the modal waitlist path. | `LandingHero.tsx`; backend `/api/waitlist`. | Browser-test whether remaining voice buttons are clear and secondary after deploy. | User cannot mistake waitlist for available voice upload. |
 
 ## Privacy Findings
 
@@ -146,3 +147,4 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | 2026-07-13 | UX-026 voice launch boundary | Removed specific voice payout amounts and premium-tier labels from unavailable voice upload surfaces; FAQ now states paid uploads are text-chat only at launch. |
 | 2026-07-13 | UX-016 auth recovery | Added safe login/signup/profile error recovery messages and invariant coverage so common failures point to the next action. |
 | 2026-07-13 | UX-019/AUD-014 stats semantics | Added `totalPayoutsUnderReviewJMD` and relabeled the landing metric to avoid contradicting the public ledger. |
+| 2026-07-13 | UX-027/AUD-022 voice waitlist focus | Removed the duplicate inline voice email capture and kept one modal waitlist path to preserve text-chat launch focus. |

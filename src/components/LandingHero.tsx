@@ -17,10 +17,6 @@ interface Stats {
 }
 
 export default function LandingHero({ onStart, registeredUser }: LandingHeroProps) {
-  // Step 04 quick email capture (inline card)
-  const [voiceEmail, setVoiceEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
-
   // Voice notify modal
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [voiceName, setVoiceName] = useState("");
@@ -41,28 +37,6 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
       .then(d => { if (d) setStats(d); })
       .catch(() => {});
   }, []);
-
-  const handleVoiceSubscribe = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!voiceEmail.trim()) return;
-    setVoiceError("");
-    setVoiceSubmitting(true);
-    try {
-      const res = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Voice waitlist subscriber", email: voiceEmail.trim(), country: "JM" }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not join the waitlist.");
-      setSubscribed(true);
-      setVoiceEmail("");
-    } catch (error: any) {
-      setVoiceError(error?.message || "Network error. Please try again.");
-    } finally {
-      setVoiceSubmitting(false);
-    }
-  };
 
   const handleVoiceModalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -505,43 +479,21 @@ export default function LandingHero({ onStart, registeredUser }: LandingHeroProp
               </div>
               <h4 className="text-md font-bold text-white flex items-center gap-1.5">
                 <Mic className="w-4 h-4 text-emerald-400 group-hover:animate-pulse" />
-                Vocal Audio Payouts
+                Future Audio Waitlist
               </h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Voice note payouts are not live yet. Join the waitlist and we will notify you when audio submissions open.
+                Voice uploads are not live yet. Text-chat upload is the paid launch flow today.
               </p>
             </div>
             <div className="pt-2 z-10">
-              {!subscribed ? (
-                <form onSubmit={handleVoiceSubscribe} className="space-y-2">
-                  {voiceError && <div className="text-[10px] text-red-300" role="alert">{voiceError}</div>}
-                  <div className="relative">
-                    <Mail className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-500" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="address@email.com"
-                      value={voiceEmail}
-                      onChange={(e) => setVoiceEmail(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-[11px] rounded-lg py-2 pl-8 pr-2 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/50"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={voiceSubmitting}
-                    className="w-full py-1.5 px-3 bg-emerald-500 text-slate-950 rounded-lg text-xs font-bold font-mono tracking-wider hover:bg-emerald-400 disabled:opacity-60 transition-colors uppercase flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Bell className="w-3.5 h-3.5" />
-                    {voiceSubmitting ? "Saving..." : "Notify Me"}
-                  </button>
-                </form>
-              ) : (
-                <div className="bg-emerald-950/40 border border-emerald-800/40 p-3 rounded-xl text-center space-y-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto" />
-                  <p className="text-[10px] text-emerald-300 font-semibold uppercase font-mono">Added &amp; Secured</p>
-                  <p className="text-[9px] text-slate-400 leading-tight">We will alert you as soon as vocal calculations launch.</p>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowVoiceModal(true)}
+                className="w-full py-1.5 px-3 bg-slate-900 text-slate-200 rounded-lg text-xs font-bold font-mono tracking-wider hover:bg-slate-800 border border-slate-800 transition-colors uppercase flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                Join audio waitlist
+              </button>
             </div>
           </div>
         </div>

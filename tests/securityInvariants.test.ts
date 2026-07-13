@@ -188,12 +188,17 @@ test("staff lifecycle routes enforce role boundaries and disabled sessions", () 
 
 test("voice waitlist uses the server and not browser-only persistence", () => {
   assert.match(landing, /fetch\("\/api\/waitlist"/);
+  assert.match(landing, /handleVoiceModalSubmit/);
+  assert.match(landing, /Join audio waitlist/);
   assert.doesNotMatch(landing, /localStorage\.setItem\(|localStorage\.getItem\(/);
+  assert.doesNotMatch(landing, /handleVoiceSubscribe|voiceEmail|setSubscribed/);
 });
 
 test("voice notes are clearly waitlist-only during text-chat launch", () => {
   assert.match(landing, /Future audio program/);
+  assert.match(landing, /Future Audio Waitlist/);
   assert.match(landing, /not open for paid upload yet/);
+  assert.match(landing, /Text-chat upload is the paid launch flow today/);
   assert.match(helpFaq, /Paid uploads are text-chat only at launch/);
   assert.match(helpFaq, /waitlist only notifies you/);
   assert.doesNotMatch(landing, /\$300|7,000|est\. \$1,200|est\. \$3,800|PREMIUM TIER/);

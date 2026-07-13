@@ -74,7 +74,7 @@ Status values:
 | ID | Status | Priority | Feature | User-facing issue | Evidence | Suggested fix | Acceptance check |
 |---|---|---:|---|---|---|---|---|
 | UX-026 | `[?] Needs proof` | P1 | Voice notes | Fixed locally: voice notes are labeled as waitlist/future audio only, specific voice payout amounts were removed from the hero/waitlist cards, and FAQ says paid uploads are text-chat only at launch. | Source: `LandingHero.tsx`, `HelpFaq.tsx`, invariant test. | Browser-test landing at mobile and desktop after deploy. | No user expects voice upload is available today. |
-| UX-027 | `[ ] Open` | P2 | Voice waitlist | Voice notification forms are useful, but placement repeats and may distract from core text-chat launch flow. | Live Overview. | Keep one clear waitlist CTA or collapse secondary forms. | Primary launch flow remains text chat upload. |
+| UX-027 | `[?] Needs proof` | P2 | Voice waitlist | Fixed locally: removed the duplicate inline Step 04 email capture and routes voice interest through one modal waitlist path; Step 04 now reinforces that text-chat upload is the paid launch flow. | Source: `LandingHero.tsx`, invariant test. | Browser-test landing flow after deploy. | Primary launch flow remains text chat upload. |
 
 ## Scoring and Review Issues
 
@@ -130,3 +130,4 @@ Status values:
 | 2026-07-13 | UX-026 | Removed specific voice payout amounts and premium-tier framing from the landing voice sections; FAQ now states paid uploads are text-chat only at launch. |
 | 2026-07-13 | UX-016 | Added safe auth recovery messages for login failures, existing-email signup, and profile-save correction paths. |
 | 2026-07-13 | UX-019 | Aligned Overview stats with ledger payout semantics by adding `totalPayoutsUnderReviewJMD` and relabeling the landing total as `Payouts Under Review`. |
+| 2026-07-13 | UX-027 | Removed the duplicate inline voice email form and kept one modal waitlist path so the landing flow stays focused on text-chat upload. |
