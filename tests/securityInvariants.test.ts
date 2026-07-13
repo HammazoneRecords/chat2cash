@@ -222,6 +222,12 @@ test("moderation decisions retain before and after state and expose evidence", (
   assert.match(adminDashboard, /Context signals/);
   assert.match(adminDashboard, /Score evidence/);
   assert.match(adminDashboard, /Payout tiers/);
+  assert.match(adminDashboard, /dialogueSnippet/);
+  assert.match(adminDashboard, /segmentSnippets/);
+  assert.match(adminDashboard, /scoreDimensionRows/);
+  assert.match(adminDashboard, /evidence messages/);
+  assert.match(adminDashboard, /Messages:/);
+  assert.match(adminDashboard, /evidenceSnippet/);
 });
 
 test("admin high-impact actions require explicit reasons", () => {

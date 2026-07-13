@@ -55,6 +55,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | UX-016 | Fixed locally | Login and registration errors now map common auth/profile failures to safe recovery guidance for wrong password, existing email, profile load, and profile field correction. | `src/components/LoginForm.tsx`, `src/components/RegistrationForm.tsx`, `tests/securityInvariants.test.ts`. | Browser/live failed-auth proof still required. |
 | UX-019/AUD-014 | Fixed locally | Public stats now expose `totalPayoutsUnderReviewJMD` from dataset payout amounts and the landing card labels it as `Payouts Under Review`, while `totalPaidJMD` remains actual transaction-based paid totals. | `db.ts`, `src/components/LandingHero.tsx`, `tests/securityInvariants.test.ts`. | Browser/live Overview-vs-Ledger proof still required. |
 | UX-027 | Fixed locally | Removed the duplicate inline voice email form and routes voice interest through one modal waitlist path; Step 04 now reinforces that text-chat upload is the paid launch flow. | `src/components/LandingHero.tsx`, `tests/securityInvariants.test.ts`. | Browser/live landing proof still required. |
+| UX-024 | Fixed locally | Admin review evidence now includes sanitized segment snippets and per-dimension score, confidence, source, and evidence message IDs. | `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin review proof still required. |
 
 ## Critical Findings
 
@@ -148,3 +149,4 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | 2026-07-13 | UX-016 auth recovery | Added safe login/signup/profile error recovery messages and invariant coverage so common failures point to the next action. |
 | 2026-07-13 | UX-019/AUD-014 stats semantics | Added `totalPayoutsUnderReviewJMD` and relabeled the landing metric to avoid contradicting the public ledger. |
 | 2026-07-13 | UX-027/AUD-022 voice waitlist focus | Removed the duplicate inline voice email capture and kept one modal waitlist path to preserve text-chat launch focus. |
+| 2026-07-13 | UX-024 admin evidence depth | Added sanitized segment snippets and score-dimension evidence IDs/source rows to the admin review panel. |

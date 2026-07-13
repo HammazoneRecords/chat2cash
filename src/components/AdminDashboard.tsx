@@ -213,6 +213,25 @@ export default function AdminDashboard() {
 
   const totalPaid = datasets.filter(d => d.status === "Disbursed").reduce((s, d) => s + (d.payoutAmount || 0), 0);
 
+  const dialogueSnippet = (dataset: Dataset, messageIndex: number) => {
+    const dialogue = dataset.dialogues?.[Math.floor(messageIndex / 2)];
+    if (!dialogue) return `message ${messageIndex}: unavailable`;
+    const text = messageIndex % 2 === 0 ? dialogue.prompt : dialogue.response;
+    return `message ${messageIndex}: ${String(text || "").slice(0, 180)}`;
+  };
+
+  const segmentSnippets = (dataset: Dataset, messageIndexes: number[] = []) =>
+    messageIndexes.slice(0, 4).map(index => dialogueSnippet(dataset, index));
+
+  const scoreDimensionRows = (entry: any) =>
+    Object.entries(entry.grade?.dimensions || {}).map(([name, dimension]: [string, any]) => ({
+      name,
+      score: dimension?.score ?? "-",
+      confidence: Math.round((dimension?.confidence || 0) * 100),
+      evidence: Array.isArray(dimension?.evidence) ? dimension.evidence.join(", ") : "-",
+      source: dimension?.source || "-",
+    }));
+
   return (
     <div style={{ minHeight: "100vh", background: "#060a13", color: "#cbd5e1", padding: "32px 24px" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -405,13 +424,26 @@ export default function AdminDashboard() {
                       <div>
                         <div style={evidenceLabel}>Conversation segments</div>
                         {d.metadata?.segments?.length ? d.metadata.segments.map((segment: any) => (
-                          <div key={segment.id} style={evidenceRow}>{segment.id} · {segment.topicLabel} · boundary confidence {Math.round((segment.boundaryConfidence || 0) * 100)}%</div>
+                          <div key={segment.id} style={evidenceRow}>
+                            <div>{segment.id} · {segment.topicLabel} · boundary confidence {Math.round((segment.boundaryConfidence || 0) * 100)}%</div>
+                            <div style={evidenceSubtle}>Messages: {(segment.messageIndexes || []).join(", ") || "-"}</div>
+                            {segmentSnippets(d, segment.messageIndexes).map((snippet, snippetIndex) => (
+                              <div key={snippetIndex} style={evidenceSnippet}>{snippet}</div>
+                            ))}
+                          </div>
                         )) : <div style={evidenceEmpty}>No segmentation metadata is available.</div>}
                       </div>
                       <div>
                         <div style={evidenceLabel}>Score evidence</div>
                         {d.metadata?.grades?.length ? d.metadata.grades.map((entry: any, index: number) => (
-                          <div key={index} style={evidenceRow}>segment {entry.segment?.id} · overall {entry.grade?.overallScore ?? "-"}/100 · confidence {Math.round((entry.grade?.confidence || 0) * 100)}%</div>
+                          <div key={index} style={evidenceRow}>
+                            <div>segment {entry.segment?.id} · overall {entry.grade?.overallScore ?? "-"}/100 · confidence {Math.round((entry.grade?.confidence || 0) * 100)}%</div>
+                            {scoreDimensionRows(entry).map(row => (
+                              <div key={row.name} style={evidenceSubtle}>
+                                {row.name}: {row.score}/100 · confidence {row.confidence}% · evidence messages {row.evidence} · source {row.source}
+                              </div>
+                            ))}
+                          </div>
                         )) : <div style={evidenceEmpty}>No grading metadata is available.</div>}
                       </div>
                       <div>
@@ -583,6 +615,15 @@ const evidenceLabel = {
 
 const evidenceRow = {
   color: "#cbd5e1", fontSize: 12, lineHeight: 1.5,
+};
+
+const evidenceSubtle = {
+  color: "#94a3b8", fontSize: 11, lineHeight: 1.45, marginTop: 5,
+};
+
+const evidenceSnippet = {
+  color: "#d1d5db", fontSize: 11, lineHeight: 1.45, marginTop: 6,
+  background: "#020617", border: "1px solid #1e293b", borderRadius: 6, padding: "6px 8px",
 };
 
 const evidenceEmpty = {

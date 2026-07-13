@@ -64,6 +64,7 @@ These records should not be rewritten or deleted during normal fixes. Add new ro
 | FIX-017 | `[?] Needs proof` | Auth recovery guidance | Login and registration errors now provide safe next actions for wrong password, existing email, profile load failure, and profile field correction. | Local source: `LoginForm.tsx`, `RegistrationForm.tsx`; unit invariant test. Browser/live proof still required. |
 | FIX-018 | `[?] Needs proof` | Public stats semantics | `/api/stats` now separates dataset payout totals under review from actual paid transaction totals, and the landing card uses `Payouts Under Review`. | Local source: `db.ts`, `LandingHero.tsx`; unit invariant test. Browser/live proof still required. |
 | FIX-019 | `[?] Needs proof` | Voice waitlist focus | Removed the duplicate inline Step 04 voice email form and routes audio interest through one modal waitlist path while keeping text-chat upload as the paid launch flow. | Local source: `LandingHero.tsx`; unit invariant test. Browser/live proof still required. |
+| FIX-020 | `[?] Needs proof` | Admin moderation evidence | Admin review now shows sanitized segment snippets and score-dimension evidence message IDs/source rows so moderators can justify decisions without exporting JSON. | Local source: `AdminDashboard.tsx`; unit invariant test. Browser/live proof still required. |
 
 ## Open Gaps
 
@@ -118,5 +119,6 @@ Add proof entries here as items are closed.
 | 2026-07-13 | FIX-017 | Added safe auth recovery messages for login failures, existing-email signup, and profile correction paths. |
 | 2026-07-13 | FIX-018 | Added `totalPayoutsUnderReviewJMD` and changed the landing stat label from paid-out to under-review so Overview and Ledger do not contradict. |
 | 2026-07-13 | FIX-019 | Removed the duplicate inline voice waitlist form and kept one modal path so voice stays secondary to text-chat launch. |
+| 2026-07-13 | FIX-020 | Added sanitized segment snippets and score-dimension evidence message IDs/source rows to the admin review panel. |
 | 2026-07-13 | FIX-014 | Added explicit admin reason enforcement and audit notes for high-impact admin actions. |
 | 2026-07-13 | FIX-015 | Removed anti-Patois scoring language and exposed per-turn review explanations in the contributor review UI. |
