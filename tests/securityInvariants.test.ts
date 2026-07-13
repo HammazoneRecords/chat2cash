@@ -138,6 +138,32 @@ test("docker context excludes secrets, databases, logs, and local artifacts", ()
   assert.match(dockerignore, /^nul$/m);
 });
 
+test("admin dataset exports use the safe training export contract", () => {
+  const exportHelper = server.slice(
+    server.indexOf("function safeTrainingExportDataset"),
+    server.indexOf("// Main Endpoint: Anonymize WhatsApp Chats"),
+  );
+  const singleExport = server.slice(
+    server.indexOf('app.get("/api/admin/datasets/:id/export"'),
+    server.indexOf("// ── Admin: Export all approved/disbursed"),
+  );
+  const bulkExport = server.slice(
+    server.indexOf('app.get("/api/admin/export-all"'),
+    server.indexOf("// ── Admin: Add proof of payment"),
+  );
+
+  assert.match(exportHelper, /schemaVersion: "c2c-training-export-v1"/);
+  assert.match(exportHelper, /dialogues: Array\.isArray\(dataset\.dialogues\)/);
+  assert.match(exportHelper, /contentHash/);
+  assert.match(exportHelper, /contextSignals/);
+  assert.match(singleExport, /safeTrainingExportDataset\(dataset\)/);
+  assert.match(bulkExport, /safeTrainingExportDataset\(d\)/);
+  assert.match(bulkExport, /\["Approved", "Disbursed"\]\.includes\(d\.status\)/);
+  assert.doesNotMatch(singleExport, /JSON\.stringify\(dataset/);
+  assert.doesNotMatch(bulkExport, /userId: d\.userId/);
+  assert.doesNotMatch(exportHelper, /userEmail|userPhone|wipayLink|wipayAccount|fullName|email:|phone:|originalLinesPreview|originalLine|idPhoto/);
+});
+
 test("canonical JSON export excludes identity and includes review metadata", () => {
   const downloadSection = fileProcessor.slice(
     fileProcessor.indexOf("const handleDownloadJSON"),

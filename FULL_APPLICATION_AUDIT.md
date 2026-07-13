@@ -12,7 +12,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 - Infrastructure files: `Dockerfile`, `.env.example`, `package.json`, `scripts/release-gate.ps1`, `scripts/api-smoke.ps1`.
 - Verification commands:
   - `corepack pnpm audit --audit-level moderate` -> no known vulnerabilities found.
-  - `corepack pnpm test:release` -> passed: typecheck, 29 unit/security/database/responsive tests, production build, API smoke.
+  - `corepack pnpm test:release` -> passed: typecheck, 32 unit/security/database/responsive tests, production build, API smoke.
 
 ## Confirmed Working
 
@@ -24,7 +24,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | Public ledger privacy shape | Working | `/api/reconciliation` maps rows to anonymous receipt records and returns empty `profiles`, `transactions`, `dialogues`, and `originalLinesPreview`. | Do not expose contributor PII or raw content publicly. |
 | JSON tamper resistance | Working | `validateCanonicalJson` and `/api/submit-json-draft` recompute hashes, grading, duplicate status, payout, and ownership from the session. | Continue ignoring client score, payout, role, status, and identity fields. |
 | Duplicate policy | Working | Full duplicate and all-pair duplicate paths strike cross-user duplicates; same-user full duplicate is idempotent. | Keep pre-submit warnings visible before final submit. |
-| Payout model | Working | `PAYOUT_VERSION = c2c-payout-v2-mindwave-buyer`; tier rates are capped at JMD 20 per accepted pair. | Keep copy and stored metadata versioned together. |
+| Payout model | Working | `PAYOUT_VERSION = c2c-payout-v3-launch-buyer`; tier rates are capped at JMD 50 per accepted pair. | Keep copy and stored metadata versioned together. |
 | Release gate | Working | `corepack pnpm test:release` passed on 2026-07-13. | Keep release gate required before deploy. |
 | Dependency audit | Working | `corepack pnpm audit --audit-level moderate` returned no known vulnerabilities. | Re-run before launch/deploy. |
 
@@ -35,6 +35,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-001 | Fixed for production | Legacy picture/passphrase endpoints return disabled in production and the production admin UI hides the legacy unlock unless explicitly enabled. | `server.ts`, `AdminLogin.tsx`, `tests/securityInvariants.test.ts`. | Remove the legacy dev-only code entirely after staff login is fully proven live. |
 | AUD-002 | Fixed | Added `.dockerignore` for env files, SQLite DBs, WAL/SHM, logs, node_modules, `.codex-*`, `nul`, archives, and temp outputs. | `.dockerignore`, `tests/securityInvariants.test.ts`. | Inspect production image after next VPS build. |
 | AUD-004 | Fixed | Replaced global 50MB parsing with 1MB default, 6MB profile update limit, and 50MB upload/JSON submit route limits. | `server.ts`, `tests/securityInvariants.test.ts`. | Add payload-size API smoke tests. |
+| AUD-005 | Fixed | Admin single and bulk dataset exports now use a `c2c-training-export-v1` safe export contract instead of serializing whole dataset records. | `server.ts`, `tests/securityInvariants.test.ts`. | Add runtime/API export smoke test after next local server restart. |
 | AUD-006 | Partially fixed | Added baseline headers, production CSP, and same-origin guard for state-changing requests. | `server.ts`, `tests/securityInvariants.test.ts`. | Add browser/API proof for cross-site POST rejection and decide whether CSRF tokens are required beyond origin checks. |
 
 ## Critical Findings
@@ -45,7 +46,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-002 | Critical | Docker / secrets | No tracked `.dockerignore`; `Dockerfile` uses `COPY . .`. | `NO_DOCKERIGNORE`; repo contains `.env`, SQLite DB files, WAL/SHM, logs, `.codex-*`, and local artifacts. | Secrets, local DBs, logs, and temporary files can enter Docker build context. | Add `.dockerignore` excluding env, DBs, backups, logs, node_modules, `.codex-*`, `nul`, and local temp outputs. | Docker build context excludes `.env` and SQLite files; image inspection finds no local DB/env. |
 | AUD-003 | Critical | Privacy / ID storage | Demographic opt-in stores redacted ID image as base64 in `profiles.idPhoto`. | `RegistrationForm.tsx` creates base64 image; `/api/profile/update` writes `idPhoto`; `profiles` schema includes `idPhoto`. | Even redacted ID images are sensitive; client-side redaction may fail or be incomplete. | Avoid storing ID images by default; store only verification status/proof hash, or isolate encrypted owner-only KYC storage with retention policy. | DB profile rows do not contain base64 ID data for normal contributors. |
 | AUD-004 | High | Request parsing | Global JSON/urlencoded body limit is 50MB for every route. | `app.use(express.json({ limit: "50mb" }))`; `app.use(express.urlencoded({ limit: "50mb" }))`. | Auth/admin/config routes accept large bodies, increasing DoS and memory pressure. | Use small global limit and route-specific larger parser only for upload/analyze routes. | Auth/admin routes reject large payloads early; upload route keeps documented max. |
-| AUD-005 | High | Admin exports | Single export returns whole dataset; bulk export includes `userId`, full dialogues, and full metadata. | `/api/admin/datasets/:id/export`; `/api/admin/export-all`. | Admin exports may include unnecessary user IDs and sensitive metadata beyond safe training export needs. | Add safe-export contract with minimal anonymized fields and separate owner-only operational export if needed. | Tests prove exports exclude contact fields, raw lines, absolute timestamps, and nonessential identity. |
+| AUD-005 | High | Admin exports | Fixed: single and bulk exports use a safe training export contract; bulk export includes only Approved/Disbursed datasets. | `safeTrainingExportDataset()` in `server.ts`; invariant test `admin dataset exports use the safe training export contract`. | Regression could reintroduce full dataset serialization. | Keep safe-export whitelist and add runtime export smoke test. | Tests prove exports exclude contact fields, raw lines, absolute timestamps, and nonessential identity. |
 | AUD-006 | High | CSRF / headers | No explicit Helmet/security headers or CSRF/origin protections visible for app POST routes. | Search found no `helmet`, no CSRF middleware, no explicit origin check. | Session-cookie POST routes may rely only on SameSite defaults and browser behavior. | Add security headers and explicit origin/CSRF strategy for state-changing routes. | Cross-site POST without valid origin/CSRF fails; headers include expected protections. |
 | AUD-007 | High | Live role proof | Full live role matrix is not proven in current evidence. | Tests cover some source invariants, but not live contributor/moderator/admin/owner/disabled/expired invite matrix. | A role regression could exist in deployed runtime despite source tests. | Add API/browser tests for role matrix against production build and test accounts. | Missing session 401, wrong role 403, disabled staff 403, owner-only actions reject admins. |
 
@@ -109,4 +110,5 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | Date | Item | Proof |
 |---|---|---|
 | 2026-07-13 | Dependency audit | `corepack pnpm audit --audit-level moderate` -> no known vulnerabilities found. |
-| 2026-07-13 | Local release gate | `corepack pnpm test:release` -> passed typecheck, 29 tests, production build, API smoke. |
+| 2026-07-13 | Local release gate | `corepack pnpm test:release` -> passed typecheck, 33 tests, production build, API smoke. |
+| 2026-07-13 | AUD-005 admin exports | Added `c2c-training-export-v1` safe export contract and invariant test. |

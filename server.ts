@@ -894,6 +894,48 @@ function averageAcceptedRate(payout: any) {
   return Number((payout.total / acceptedUnits).toFixed(2));
 }
 
+function safeTrainingExportDataset(dataset: any) {
+  const metadata = dataset.metadata || {};
+  return {
+    schemaVersion: "c2c-training-export-v1",
+    datasetId: dataset.id,
+    status: dataset.status,
+    currency: dataset.currency,
+    payoutAmount: dataset.payoutAmount,
+    contentHash: dataset.contentHash || metadata.contentHash || "",
+    hashVersion: dataset.hashVersion || metadata.hashVersion || "v1",
+    purifiedFileName: dataset.purifiedFileName,
+    dialogues: Array.isArray(dataset.dialogues)
+      ? dataset.dialogues.map((dialogue: any, index: number) => ({
+        id: dialogue.id || `dialogue-${index}`,
+        prompt: dialogue.prompt,
+        response: dialogue.response,
+        isUseful: Boolean(dialogue.isUseful),
+        score: Number(dialogue.score || 0),
+        category: dialogue.category || "",
+        explanation: dialogue.explanation || "",
+      }))
+      : [],
+    metadata: {
+      jsonVersion: metadata.jsonVersion,
+      evaluatorVersion: metadata.evaluatorVersion,
+      segmentationVersion: metadata.segmentationVersion,
+      payoutVersion: metadata.payoutVersion,
+      hashVersion: metadata.hashVersion,
+      duplicateStatus: metadata.duplicateStatus || dataset.dupStatus,
+      totalLinesAnalyzed: metadata.totalLinesAnalyzed,
+      totalUsefulLines: metadata.totalUsefulLines,
+      suitabilityScore: metadata.suitabilityScore,
+      evaluationSummary: metadata.evaluationSummary,
+      payoutRatePerUsefulLine: metadata.payoutRatePerUsefulLine,
+      payout: metadata.payout,
+      segments: metadata.segments,
+      grades: metadata.grades,
+      contextSignals: metadata.contextSignals,
+    },
+  };
+}
+
 // Main Endpoint: Anonymize WhatsApp Chats & Run AI evaluation for usefulness
 app.post("/api/process-chat", requireSession, async (req: any, res) => {
   try {
@@ -1625,13 +1667,14 @@ app.get("/api/admin/datasets/:id/export", requireAdmin, (req, res) => {
   if (!dataset) return res.status(404).json({ error: "Not found." });
   res.setHeader("Content-Disposition", `attachment; filename="${req.params.id}.json"`);
   res.setHeader("Content-Type", "application/json");
-  res.send(JSON.stringify(dataset, null, 2));
+  res.send(JSON.stringify(safeTrainingExportDataset(dataset), null, 2));
 });
 
 // ── Admin: Export all approved/disbursed as JSONL ─────────────────────────
 app.get("/api/admin/export-all", requireAdmin, (_req, res) => {
-  const datasets = database.getAllDatasetsAdmin().filter((d: any) => d.status !== "Pending Review");
-  const lines = datasets.map((d: any) => JSON.stringify({ id: d.id, userId: d.userId, dialogues: d.dialogues, metadata: d.metadata }));
+  const datasets = database.getAllDatasetsAdmin()
+    .filter((d: any) => ["Approved", "Disbursed"].includes(d.status));
+  const lines = datasets.map((d: any) => JSON.stringify(safeTrainingExportDataset(d)));
   res.setHeader("Content-Disposition", "attachment; filename=\"chat2cash-export.jsonl\"");
   res.setHeader("Content-Type", "application/x-ndjson");
   res.send(lines.join("\n"));
