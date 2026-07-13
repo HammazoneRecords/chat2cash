@@ -28,10 +28,19 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
   const [payoutLoading, setPayoutLoading] = useState(false);
   const [payoutSuccessMessage, setPayoutSuccessMessage] = useState("");
   const [receiptNumber, setReceiptNumber] = useState<string | null>(null);
+  const [payoutAccountInput, setPayoutAccountInput] = useState(user.wipayAccount || "");
+  const [payoutLinkInput, setPayoutLinkInput] = useState(user.wipayLink || "");
+  const [payoutProfileComplete, setPayoutProfileComplete] = useState(Boolean(user.wipayAccount && user.wipayLink));
+  const [payoutSetupLoading, setPayoutSetupLoading] = useState(false);
+  const [payoutSetupMessage, setPayoutSetupMessage] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const publicAccountCode = user.userId ? `acct-${user.userId.slice(-6)}` : "acct-review";
   const whatsappExportHelp = "In WhatsApp, open the chat, tap More or Export Chat, choose Export Chat, select Without Media, then upload the .zip or .txt file here.";
+  const hasPayoutProfile = payoutProfileComplete;
+  const payoutDestination = hasPayoutProfile
+    ? `${payoutAccountInput} (${user.country === "JM" ? "JMD" : user.country === "BB" ? "BBD" : "TTD"})`
+    : "Payout setup needed before final submit";
 
   const fetchReceipt = async (datasetId: string) => {
     try {
@@ -41,6 +50,50 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
         if (data.receiptNumber) setReceiptNumber(data.receiptNumber);
       }
     } catch {}
+  };
+
+  const handleSavePayoutProfile = async () => {
+    setError("");
+    setPayoutSetupMessage("");
+
+    if (!payoutAccountInput.trim() || !payoutLinkInput.trim()) {
+      setError("Add both your WiPay account reference and payout link before final submission.");
+      return;
+    }
+
+    setPayoutSetupLoading(true);
+    try {
+      const res = await fetch("/api/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          phone: user.phone,
+          wipayAccount: payoutAccountInput,
+          wipayLink: payoutLinkInput,
+          country: user.country || "JM",
+          town: user.town || "",
+          age: user.age,
+          gender: user.gender,
+          educationLevel: user.educationLevel || "",
+          school: user.school || "",
+          singleParentHome: Boolean(user.singleParentHome),
+          demographicOptIn: Boolean(user.demographicOptIn),
+        }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to save payout profile.");
+      }
+
+      setPayoutProfileComplete(true);
+      setPayoutSetupMessage("Payout profile saved. Final dataset submission is now available.");
+    } catch (err: any) {
+      setError(err?.message || "Failed to save payout profile.");
+    } finally {
+      setPayoutSetupLoading(false);
+    }
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -355,9 +408,55 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
               </p>
             </div>
             <div className="text-xs bg-emerald-950/40 text-emerald-300 px-3 py-1.5 rounded-xl font-mono border border-emerald-900/30 self-start">
-              WiPay Wallet Destination: <span className="font-bold">{user.wipayAccount} ({user.country === "JM" ? "JMD" : user.country === "BB" ? "BBD" : "TTD"})</span>
+              WiPay Wallet Destination: <span className="font-bold">{payoutDestination}</span>
             </div>
           </div>
+
+          {!hasPayoutProfile && (
+            <div id="payout-profile-setup-panel" className="rounded-2xl border border-amber-900/40 bg-amber-950/10 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <CreditCard className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-display font-bold text-white">Finish payout setup before final submit</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                    You can upload, preview, and download anonymized JSON now. To submit chats for paid review, add your WiPay account reference and payout link.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  id="payout-setup-account"
+                  type="text"
+                  value={payoutAccountInput}
+                  onChange={(event) => setPayoutAccountInput(event.target.value)}
+                  placeholder="WiPay account reference"
+                  className="w-full px-3 py-2.5 bg-[#050810] border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500/60"
+                />
+                <input
+                  id="payout-setup-link"
+                  type="url"
+                  value={payoutLinkInput}
+                  onChange={(event) => setPayoutLinkInput(event.target.value)}
+                  placeholder="https://pay.wipaycaribbean.com/..."
+                  className="w-full px-3 py-2.5 bg-[#050810] border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500/60"
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <button
+                  id="btn-save-payout-profile"
+                  type="button"
+                  disabled={payoutSetupLoading}
+                  onClick={handleSavePayoutProfile}
+                  className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 text-xs font-bold transition-colors"
+                >
+                  {payoutSetupLoading ? "Saving payout setup..." : "Save payout setup"}
+                </button>
+                {payoutSetupMessage && (
+                  <span className="text-xs font-semibold text-emerald-300">{payoutSetupMessage}</span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div id="upload-review-submit-guide" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-2xl border border-slate-800 bg-[#060a13] p-4">
@@ -500,7 +599,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                 <div className="p-3.5 bg-[#050810]/75 rounded-xl space-y-2 border border-slate-800 text-[11px] text-slate-300">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Target Account Code:</span>
-                    <strong className="font-mono text-white">{user.wipayAccount}</strong>
+                    <strong className="font-mono text-white">{hasPayoutProfile ? user.wipayAccount : "Finish payout setup before final submit"}</strong>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Review Window:</span>
@@ -686,7 +785,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                     <button
                       id="btn-submit-reviewed-json"
                       onClick={handleSubmitReviewedDraft}
-                      disabled={loading}
+                      disabled={loading || !hasPayoutProfile}
                       className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 select-none cursor-pointer"
                     >
                       <FileCheck className="w-3.5 h-3.5" />
@@ -711,6 +810,52 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                   </button>
                 </div>
               </div>
+
+              {!hasPayoutProfile && (
+                <div id="review-payout-profile-setup-panel" className="rounded-2xl border border-amber-900/40 bg-amber-950/10 p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <CreditCard className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-display font-bold text-white">Payout setup required for final submit</h3>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                        Your anonymized draft is ready for review and download. Add your WiPay details here to unlock final paid submission.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      id="review-payout-setup-account"
+                      type="text"
+                      value={payoutAccountInput}
+                      onChange={(event) => setPayoutAccountInput(event.target.value)}
+                      placeholder="WiPay account reference"
+                      className="w-full px-3 py-2.5 bg-[#050810] border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500/60"
+                    />
+                    <input
+                      id="review-payout-setup-link"
+                      type="url"
+                      value={payoutLinkInput}
+                      onChange={(event) => setPayoutLinkInput(event.target.value)}
+                      placeholder="https://pay.wipaycaribbean.com/..."
+                      className="w-full px-3 py-2.5 bg-[#050810] border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500/60"
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <button
+                      id="btn-review-save-payout-profile"
+                      type="button"
+                      disabled={payoutSetupLoading}
+                      onClick={handleSavePayoutProfile}
+                      className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 text-xs font-bold transition-colors"
+                    >
+                      {payoutSetupLoading ? "Saving payout setup..." : "Save payout setup"}
+                    </button>
+                    {payoutSetupMessage && (
+                      <span className="text-xs font-semibold text-emerald-300">{payoutSetupMessage}</span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {(activeDataset.metadata as any).duplicatePreview && (
                 <div className={`rounded-xl border p-3 text-xs ${

@@ -10,6 +10,7 @@ const appShell = fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8");
 const adminDashboard = fs.readFileSync(path.join(root, "src", "components", "AdminDashboard.tsx"), "utf8");
 const adminLogin = fs.readFileSync(path.join(root, "src", "components", "AdminLogin.tsx"), "utf8");
 const fileProcessor = fs.readFileSync(path.join(root, "src", "components", "FileProcessor.tsx"), "utf8");
+const registrationForm = fs.readFileSync(path.join(root, "src", "components", "RegistrationForm.tsx"), "utf8");
 const mySubmissions = fs.readFileSync(path.join(root, "src", "components", "MySubmissions.tsx"), "utf8");
 const reconciliationLedger = fs.readFileSync(path.join(root, "src", "components", "ReconciliationLedger.tsx"), "utf8");
 const dockerignore = fs.readFileSync(path.join(root, ".dockerignore"), "utf8");
@@ -211,6 +212,41 @@ test("profile update validates fields and never returns or stores base64 ID imag
   assert.match(meRoute, /sanitizeProfileForClient\(user\)/);
   assert.doesNotMatch(profileUpdate, /idPhoto: idPhoto \|\| ""/);
   assert.doesNotMatch(profileHelpers, /\.\.\.safeProfile,\s*idPhoto:/);
+});
+
+test("contributors can preview before payout setup but cannot submit payable datasets without it", () => {
+  const profileHelpers = server.slice(
+    server.indexOf("function sanitizeProfileForClient"),
+    server.indexOf("// Cascading AI evaluator"),
+  );
+  const submitJsonSection = server.slice(
+    server.indexOf('app.post("/api/submit-json-draft"'),
+    server.indexOf("// Helper: Securely strip timestamps"),
+  );
+  const processChatSection = server.slice(
+    server.indexOf('app.post("/api/process-chat"'),
+    server.indexOf("// Contributor requests a payout"),
+  );
+  const payoutQueueSection = server.slice(
+    server.indexOf('app.post("/api/payouts"'),
+    server.indexOf('app.post("/api/admin/payout-approve"'),
+  );
+
+  assert.match(profileHelpers, /function hasCompletePayoutProfile/);
+  assert.match(profileHelpers, /payoutProfileRequiredMessage/);
+  assert.match(profileHelpers, /if \(wipayAccount && !\/\^\[a-zA-Z0-9_/);
+  assert.match(profileHelpers, /if \(wipayLink\) \{/);
+  assert.match(submitJsonSection, /if \(!hasCompletePayoutProfile\(profile\)\)/);
+  assert.match(processChatSection, /const \{ chatText, fileName, userId, draftOnly \} = req\.body/);
+  assert.match(processChatSection, /if \(!draftOnly && !hasCompletePayoutProfile\(profile\)\)/);
+  assert.match(payoutQueueSection, /Contributor must finish their WiPay payout profile before admin can queue payment/);
+  assert.match(registrationForm, /WiPay details are only required before final paid submission/);
+  assert.match(registrationForm, /CREATE PREVIEW ACCOUNT/);
+  assert.match(fileProcessor, /Payout setup needed before final submit/);
+  assert.match(fileProcessor, /payout-profile-setup-panel/);
+  assert.match(fileProcessor, /review-payout-profile-setup-panel/);
+  assert.match(fileProcessor, /btn-review-save-payout-profile/);
+  assert.match(fileProcessor, /disabled=\{loading \|\| !hasPayoutProfile\}/);
 });
 
 test("maintenance backfill is dry-run by default and can migrate legacy ID photos", () => {

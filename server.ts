@@ -76,14 +76,16 @@ function validateProfilePayload(body: any) {
   if (!phone || !/^[+\d()\-\s]{7,32}$/.test(phone)) {
     return { error: "Enter a valid phone number." };
   }
-  if (!wipayAccount || !/^[a-zA-Z0-9_.\- ]{3,64}$/.test(wipayAccount)) {
+  if (wipayAccount && !/^[a-zA-Z0-9_.\- ]{3,64}$/.test(wipayAccount)) {
     return { error: "Enter a valid WiPay account reference." };
   }
-  try {
-    const url = new URL(wipayLink);
-    if (!["http:", "https:"].includes(url.protocol)) throw new Error("bad protocol");
-  } catch {
-    return { error: "Enter a valid WiPay payout link." };
+  if (wipayLink) {
+    try {
+      const url = new URL(wipayLink);
+      if (!["http:", "https:"].includes(url.protocol)) throw new Error("bad protocol");
+    } catch {
+      return { error: "Enter a valid WiPay payout link." };
+    }
   }
   if (!ALLOWED_PROFILE_COUNTRIES.has(country)) {
     return { error: "Select a supported country." };
@@ -128,6 +130,18 @@ function validateProfilePayload(body: any) {
       idPhoto: idPhotoMarker,
     },
   };
+}
+
+function hasCompletePayoutProfile(profile: any) {
+  return Boolean(
+    profile
+      && cleanText(profile.wipayAccount, 64)
+      && cleanText(profile.wipayLink, 240),
+  );
+}
+
+function payoutProfileRequiredMessage() {
+  return "Finish your payout profile before final submission. You can preview and download anonymized JSON without WiPay details, but paid dataset submission requires a WiPay account reference and payout link.";
 }
 
 // Cascading AI evaluator: Oreluwa (RunPod) → DeepSeek → local heuristics
@@ -545,6 +559,9 @@ app.post("/api/submit-json-draft", requireSession, (req: any, res) => {
     const userId = req.session.user.id;
     const profile = database.getProfile(userId);
     if (!profile) return res.status(404).json({ error: "Profile not found." });
+    if (!hasCompletePayoutProfile(profile)) {
+      return res.status(409).json({ error: payoutProfileRequiredMessage() });
+    }
 
     const { dialogues } = validateCanonicalJson(req.body);
     const contentHash = hashCanonicalDialogues(dialogues);
@@ -988,7 +1005,7 @@ function contributorSubmissionSummary(dataset: any) {
 // Main Endpoint: Anonymize WhatsApp Chats & Run AI evaluation for usefulness
 app.post("/api/process-chat", requireSession, async (req: any, res) => {
   try {
-    const { chatText, fileName, userId } = req.body;
+    const { chatText, fileName, userId, draftOnly } = req.body;
 
     if (!chatText || !userId) {
       return res.status(400).json({ error: "Missing required fields: chatText and userId." });
@@ -1001,6 +1018,9 @@ app.post("/api/process-chat", requireSession, async (req: any, res) => {
     const profile = database.getProfile(req.session.user.id);
     if (!profile) {
       return res.status(404).json({ error: "No user profile found. Please register first for proper record-keeping." });
+    }
+    if (!draftOnly && !hasCompletePayoutProfile(profile)) {
+      return res.status(409).json({ error: payoutProfileRequiredMessage() });
     }
     
     // 1. Sanitize dialogue turns
@@ -1414,6 +1434,9 @@ app.post("/api/payouts", requireAdmin, (req, res) => {
   const profile = database.getProfile(userId);
   if (!profile) {
     return res.status(404).json({ error: "User profile not found." });
+  }
+  if (!hasCompletePayoutProfile(profile)) {
+    return res.status(409).json({ error: "Contributor must finish their WiPay payout profile before admin can queue payment." });
   }
 
   const existing = database.getTransactionsByDataset(datasetId);
