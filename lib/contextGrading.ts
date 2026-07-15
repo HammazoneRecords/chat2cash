@@ -61,8 +61,8 @@ export function segmentConversation(messages: NormalizedMessage[]): Conversation
         id: `segment-${segments.length}`,
         messageIndexes: [message.index],
         topicLabel: "Conversation",
-        boundaryConfidence: 1,
-        boundaryReasons: [],
+        boundaryConfidence: Math.min(0.99, 0.55 + reasons.length * 0.15),
+        boundaryReasons: reasons,
       };
     } else {
       current.messageIndexes.push(message.index);
@@ -88,15 +88,23 @@ export type MultiFactorGrade = {
 
 export function gradeSegment(messages: NormalizedMessage[], segment: ConversationSegment): MultiFactorGrade {
   const selected = messages.filter(m => segment.messageIndexes.includes(m.index));
+  const combinedText = selected.map(m => m.text).join(" ").toLowerCase();
   const wordCount = selected.reduce((sum, m) => sum + m.text.split(/\s+/).filter(Boolean).length, 0);
   const hasQuestion = selected.some(m => m.text.includes("?"));
   const hasFollowup = selected.length >= 3;
+  const hasDialect = /\b(mi|unu|yuh|fi|seh|mek|deh|gwaan|nah|cyaan|likkle|wah|nuh|dat|dem|ting|zimmie)\b/i.test(combinedText);
+  const hasSpellingVariation = /\b(gonna|wanna|cuz|cause|thru|tho|nite|tmrw|plz|kinda|sorta)\b/i.test(combinedText)
+    || /\b[a-z]*[0-9][a-z0-9]*\b/i.test(combinedText);
+  const hasCreativeCultural = /\b(story|song|lyric|metaphor|culture|cultural|proverb|brand|campaign|creative|poem|dancehall|reggae|yard|community)\b/i.test(combinedText)
+    || (hasDialect && wordCount >= 18);
+  const languageVariationScore = hasDialect || hasSpellingVariation ? 78 : wordCount >= 12 ? 65 : 35;
+  const creativeCulturalScore = hasCreativeCultural ? 82 : 50;
   const dimensions: Record<string, ScoreDimension> = {
     instructional: { score: hasQuestion && wordCount >= 20 ? 80 : 45, confidence: 0.55, evidence: segment.messageIndexes, source: "deterministic" },
     contextCoherence: { score: segment.boundaryConfidence < 0.7 ? 55 : 75, confidence: 0.5, evidence: segment.messageIndexes, source: "deterministic" },
-    languageVariation: { score: wordCount >= 12 ? 65 : 35, confidence: 0.45, evidence: segment.messageIndexes, source: "deterministic" },
+    languageVariation: { score: languageVariationScore, confidence: hasDialect || hasSpellingVariation ? 0.68 : 0.45, evidence: segment.messageIndexes, source: "deterministic" },
     followupValue: { score: hasFollowup ? 70 : 35, confidence: 0.45, evidence: segment.messageIndexes, source: "deterministic" },
-    creativeCultural: { score: 50, confidence: 0.25, evidence: segment.messageIndexes, source: "deterministic" },
+    creativeCultural: { score: creativeCulturalScore, confidence: hasCreativeCultural ? 0.62 : 0.25, evidence: segment.messageIndexes, source: "deterministic" },
     safetyPrivacy: { score: 100, confidence: 0.8, evidence: segment.messageIndexes, source: "deterministic" },
   };
   const values = Object.values(dimensions);

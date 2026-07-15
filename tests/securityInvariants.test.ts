@@ -490,7 +490,10 @@ test("JSON duplicate submit path applies the same strike policy as ZIP", () => {
     server.indexOf('app.post("/api/submit-json-draft"'),
     server.indexOf("// Helper: Securely strip timestamps"),
   );
-  assert.match(submitJsonSection, /if \(existing\?\.userId === userId\)/);
+  assert.ok(
+    submitJsonSection.includes("if (existing?.userId === userId)")
+      || submitJsonSection.includes("if (existing && existing.userId === userId)"),
+  );
   assert.match(submitJsonSection, /success: true, idempotent: true/);
   assert.match(submitJsonSection, /Reviewed JSON full duplicate/);
   assert.match(submitJsonSection, /database\.addStrike\(userId\)/);

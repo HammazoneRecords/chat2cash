@@ -57,6 +57,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | UX-027 | Fixed locally | Removed the duplicate inline voice email form and routes voice interest through one modal waitlist path; Step 04 now reinforces that text-chat upload is the paid launch flow. | `src/components/LandingHero.tsx`, `tests/securityInvariants.test.ts`. | Browser/live landing proof still required. |
 | UX-024 | Fixed locally | Admin review evidence now includes sanitized segment snippets and per-dimension score, confidence, source, and evidence message IDs. | `src/components/AdminDashboard.tsx`, `tests/securityInvariants.test.ts`. | Browser/live admin review proof still required. |
 | SEC-018 | Fixed locally | `.env.example` now documents Chat2Cash production/local URLs, `DATA_DIR`, Better Auth URL/secret requirements, JMD WiPay country, AI provider variables, and test-account seed variables without secrets. | `.env.example`, `tests/securityInvariants.test.ts`. | Live/operator env proof still required. |
+| SEC-013/AUD-029 | Fixed locally | Added deterministic grading signals and fixtures for follow-up context, topic shifts, contradiction, Patois/code-switching, spelling variation, and creative/cultural insight. | `lib/contextGrading.ts`, `tests/contextGrading.test.ts`. | Browser/API ZIP scoring proof still required. |
 
 ## Critical Findings
 
@@ -111,7 +112,7 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | AUD-026 | High | Browser workflows | Current evidence is source/tests; no fresh browser walkthrough in this audit. | Browser proof for signup/login/upload/draft/download/submit/ledger/admin moderation/payout. |
 | AUD-027 | High | Live deployment | Local release gate passed, but live deploy state was not verified in this audit. | Live health, auth, upload, ledger, admin, payout proof against `https://chat2cash.mindwaveja.com`. |
 | AUD-028 | Medium | Dependency/security scan | `pnpm audit` passed, but no SAST or secret scan was run. | Add secret scan and source security scan in release checklist. |
-| AUD-029 | Medium | Scoring fixtures | Partially fixed locally: invariant coverage now blocks anti-Patois rejection language and protects plain per-turn review explanations; broader domain fixtures are still needed. | Add fixture tests for follow-up meaning change, topic shifts, contradiction, spelling variation, and creative/cultural insight. |
+| AUD-029 | Medium | Scoring fixtures | Fixed locally: deterministic grading signals and fixtures now cover follow-up meaning change, topic shifts, contradiction, Patois/code-switching, spelling variation, and creative/cultural insight. | `lib/contextGrading.ts`, `tests/contextGrading.test.ts`. Browser/API ZIP proof still required. |
 
 ## Immediate Fix Order
 
@@ -152,3 +153,4 @@ Scope: frontend, backend, security, privacy, payout flow, admin operations, and 
 | 2026-07-13 | UX-027/AUD-022 voice waitlist focus | Removed the duplicate inline voice email capture and kept one modal waitlist path to preserve text-chat launch focus. |
 | 2026-07-13 | UX-024 admin evidence depth | Added sanitized segment snippets and score-dimension evidence IDs/source rows to the admin review panel. |
 | 2026-07-13 | SEC-018 env template | Updated `.env.example` for Chat2Cash production/local URLs, DATA_DIR, JMD WiPay country, Better Auth secret guidance, AI provider vars, and test seed variables. |
+| 2026-07-13 | SEC-013/AUD-029 scoring fixtures | Added deterministic language/cultural scoring signals and fixtures for follow-up context, topic shifts, contradiction, Patois/code-switching, spelling variation, and creative/cultural insight. |
