@@ -373,7 +373,10 @@ test("contributors can preview before payout setup but cannot submit payable dat
   assert.match(fileProcessor, /payout-profile-setup-panel/);
   assert.match(fileProcessor, /review-payout-profile-setup-panel/);
   assert.match(fileProcessor, /btn-review-save-payout-profile/);
-  assert.match(fileProcessor, /disabled=\{loading \|\| !hasPayoutProfile\}/);
+  assert.match(fileProcessor, /Save your WiPay payout setup first, then submit the anonymous dataset/);
+  assert.match(fileProcessor, /scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
+  assert.match(fileProcessor, /disabled=\{loading\}/);
+  assert.match(fileProcessor, /aria-disabled=\{!hasPayoutProfile\}/);
 });
 
 test("text chat payouts use JMD launch settlement independent of profile country", () => {

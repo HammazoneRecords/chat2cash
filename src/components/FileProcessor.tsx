@@ -35,6 +35,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
   const [payoutSetupMessage, setPayoutSetupMessage] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const payoutSetupRef = useRef<HTMLDivElement>(null);
   const publicAccountCode = user.userId ? `acct-${user.userId.slice(-6)}` : "acct-review";
   const whatsappExportHelp = "In WhatsApp, open the chat, tap More or Export Chat, choose Export Chat, select Without Media, then upload the .zip or .txt file here.";
   const hasPayoutProfile = payoutProfileComplete;
@@ -284,6 +285,13 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
     if (!activeDataset || activeDataset.status !== "Draft") return;
     setPayoutSuccessMessage("");
     setError("");
+    if (!hasPayoutProfile) {
+      setStatusMessage("Save your WiPay payout setup first, then submit the anonymous dataset.");
+      payoutSetupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const firstInput = payoutSetupRef.current?.querySelector("input");
+      if (firstInput instanceof HTMLInputElement) firstInput.focus();
+      return;
+    }
     setLoading(true);
     try {
       const response = await fetch("/api/submit-json-draft", {
@@ -785,7 +793,9 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                     <button
                       id="btn-submit-reviewed-json"
                       onClick={handleSubmitReviewedDraft}
-                      disabled={loading || !hasPayoutProfile}
+                      disabled={loading}
+                      aria-disabled={!hasPayoutProfile}
+                      title={!hasPayoutProfile ? "Save payout setup first, then submit." : "Submit anonymized dataset for review."}
                       className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 select-none cursor-pointer"
                     >
                       <FileCheck className="w-3.5 h-3.5" />
@@ -812,7 +822,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
               </div>
 
               {!hasPayoutProfile && (
-                <div id="review-payout-profile-setup-panel" className="rounded-2xl border border-amber-900/40 bg-amber-950/10 p-4 space-y-3">
+                <div ref={payoutSetupRef} id="review-payout-profile-setup-panel" className="rounded-2xl border border-amber-900/40 bg-amber-950/10 p-4 space-y-3">
                   <div className="flex items-start gap-3">
                     <CreditCard className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
                     <div>
