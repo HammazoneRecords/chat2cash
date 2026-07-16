@@ -7,6 +7,61 @@ import JSZip from "jszip";
 import { motion } from "motion/react";
 import { ProcessedDataset, UserProfile } from "../types";
 
+type LocalSanitizedTurn = {
+  speaker: string;
+  text: string;
+  gapBucket: "short" | "medium" | "long";
+  originalLine: string;
+};
+
+function sanitizeChatInBrowser(chatText: string) {
+  const turns: LocalSanitizedTurn[] = [];
+  const speakerMap = new Map<string, string>();
+  let speakerCounter = 65;
+  let previousTimestamp = 0;
+  const patterns = [
+    /^\[(\d{1,2}\/\d{1,2}\/\d{2,4},\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s+[AP]M)?)\]\s+([^:]+):\s*(.*)$/i,
+    /^(\d{1,2}\/\d{1,2}\/\d{2,4},\s+\d{1,2}:\d{2}(?:\s+[AP]M)?)\s+-\s+([^:]+):\s*(.*)$/i,
+    /^\[(\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}:\d{2})\]\s+([^:]+):\s*(.*)$/,
+  ];
+
+  for (const line of chatText.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const match = patterns.map((pattern) => line.match(pattern)).find(Boolean);
+    if (!match) continue;
+    const timestamp = Date.parse(match[1]);
+    const sender = match[2].trim();
+    const text = match[3].trim();
+    if (/security code|joined using/i.test(sender) || /end-to-end encrypted|omitted/i.test(text)) continue;
+    let speaker = speakerMap.get(sender);
+    if (!speaker) {
+      speaker = `Speaker ${String.fromCharCode(speakerCounter)}`;
+      speakerMap.set(sender, speaker);
+      speakerCounter = speakerCounter >= 90 ? 65 : speakerCounter + 1;
+    }
+    const gapHours = previousTimestamp && Number.isFinite(timestamp)
+      ? Math.max(0, timestamp - previousTimestamp) / 3_600_000
+      : 0;
+    const gapBucket = gapHours > 24 ? "long" : gapHours > 2 ? "medium" : "short";
+    previousTimestamp = Number.isFinite(timestamp) ? timestamp : previousTimestamp;
+    const sanitizedText = text
+      .replace(/\+?\d{1,4}[\s-]?\(?\d{2,3}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}/g, "[Phone Redacted]")
+      .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, "[Email Redacted]");
+    turns.push({ speaker, text: sanitizedText, gapBucket, originalLine: line });
+  }
+
+  return {
+    turns,
+    preview: turns.map((turn, index) => ({
+      id: `turn-${index}`,
+      speaker: turn.speaker,
+      originalText: turn.originalLine,
+      cleanedText: `[${turn.speaker}]: ${turn.text}`,
+      isUseful: turn.text.split(/\s+/).length > 3,
+    })),
+  };
+}
+
 interface FileProcessorProps {
   user: UserProfile;
   onDatasetCreated: (dataset: ProcessedDataset) => void;
@@ -41,7 +96,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
   const hasPayoutProfile = payoutProfileComplete;
   const payoutDestination = hasPayoutProfile
     ? `${payoutAccountInput} (JMD text-chat settlement)`
-    : "Payout setup needed before final submit";
+    : "Payout setup needed before payout";
 
   const fetchReceipt = async (datasetId: string) => {
     try {
@@ -193,13 +248,17 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
         throw new Error(`The WhatsApp export file is empty or corrupted. Re-export the chat without media and upload the new .zip or .txt file.`);
       }
 
-      setStatusMessage("Running local speaker masking & initiating AI quality evaluation...");
+      setStatusMessage("Sanitizing locally & initiating AI quality evaluation...");
+      const localSanitized = sanitizeChatInBrowser(chatText);
+      if (!localSanitized.turns.length) {
+        throw new Error(`No chat messages could be parsed. Check that the file format is standard WhatsApp export syntax.`);
+      }
       
       const response = await fetch("/api/process-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            chatText,
+            sanitizedTurns: localSanitized.turns.map(({ originalLine: _originalLine, ...turn }) => turn),
             fileName: file.name,
             userId: user.userId,
             draftOnly: true,
@@ -227,9 +286,17 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
         setStatusMessage("");
       }
 
-      setActiveDataset(result.dataset);
-      onDatasetCreated(result.dataset);
-      fetchReceipt(result.dataset.id);
+      const localDataset = {
+        ...result.dataset,
+        originalLinesPreview: localSanitized.preview.map((line, index) => ({
+          ...line,
+          isUseful: result.dataset.dialogues?.[Math.floor(index / 2)]?.isUseful ?? line.isUseful,
+          explanation: result.dataset.dialogues?.[Math.floor(index / 2)]?.explanation,
+        })),
+      };
+      setActiveDataset(localDataset);
+      onDatasetCreated(localDataset);
+      fetchReceipt(localDataset.id);
     } catch (err: any) {
       setError(err?.message || "Failed to process chat dataset. Verify formatting.");
     } finally {
@@ -285,13 +352,6 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
     if (!activeDataset || activeDataset.status !== "Draft") return;
     setPayoutSuccessMessage("");
     setError("");
-    if (!hasPayoutProfile) {
-      setStatusMessage("Save your WiPay payout setup first, then submit the anonymous dataset.");
-      payoutSetupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      const firstInput = payoutSetupRef.current?.querySelector("input");
-      if (firstInput instanceof HTMLInputElement) firstInput.focus();
-      return;
-    }
     setLoading(true);
     try {
       const response = await fetch("/api/submit-json-draft", {
@@ -607,7 +667,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                 <div className="p-3.5 bg-[#050810]/75 rounded-xl space-y-2 border border-slate-800 text-[11px] text-slate-300">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Target Account Code:</span>
-                    <strong className="font-mono text-white">{hasPayoutProfile ? user.wipayAccount : "Finish payout setup before final submit"}</strong>
+                    <strong className="font-mono text-white">{hasPayoutProfile ? user.wipayAccount : "Finish payout setup before payout"}</strong>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Review Window:</span>
@@ -794,8 +854,7 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                       id="btn-submit-reviewed-json"
                       onClick={handleSubmitReviewedDraft}
                       disabled={loading}
-                      aria-disabled={!hasPayoutProfile}
-                      title={!hasPayoutProfile ? "Save payout setup first, then submit." : "Submit anonymized dataset for review."}
+                      title="Submit anonymized dataset for review."
                       className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 select-none cursor-pointer"
                     >
                       <FileCheck className="w-3.5 h-3.5" />
@@ -826,9 +885,9 @@ export default function FileProcessor({ user, onDatasetCreated }: FileProcessorP
                   <div className="flex items-start gap-3">
                     <CreditCard className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="text-sm font-display font-bold text-white">Payout setup required for final submit</h3>
+                      <h3 className="text-sm font-display font-bold text-white">Payout setup required before payout</h3>
                       <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                        Your anonymized draft is ready for review and download. Add your WiPay details here to unlock final paid submission.
+                        Your anonymized draft is ready for review, download, and submission. Add your WiPay details here before payout.
                       </p>
                     </div>
                   </div>

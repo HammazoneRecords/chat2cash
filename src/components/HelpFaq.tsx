@@ -32,7 +32,7 @@ export default function HelpFaq() {
     {
       id: "pay-1",
       question: "How exactly are my dialogue turns priced and calculated?",
-      answer: "MindWave buys accepted anonymized chat pairs by value tier. Low-value but valid conversation earns JMD $25, contextual conversation earns JMD $50, Patois/code-switching language value earns JMD $75, creative or cultural insight earns JMD $100, and strong instructional/task-solving pairs earn JMD $125 base. Verified multiplier bonuses are capped so the displayed customer rate does not exceed JMD $200 per accepted pair.",
+      answer: "MindWave buys accepted anonymized chat pairs by value tier. Low-value but valid conversation earns JMD $25, contextual conversation earns JMD $50, Patois/code-switching language value earns JMD $75, creative or cultural insight earns JMD $25, and strong instructional/task-solving pairs earn JMD $100 base. Verified multiplier bonuses are capped so the displayed customer rate does not exceed JMD $200 per accepted pair.",
       category: "payout",
       icon: DollarSign,
     },

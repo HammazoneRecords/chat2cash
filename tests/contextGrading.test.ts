@@ -94,8 +94,22 @@ test("calculates tiered payout with multiplier", () => {
     { tier: "rejected", units: 4 },
   ], 2);
   assert.equal(payout.total, 500);
-  assert.equal(payout.version, "c2c-payout-v5-mindwave-buyer");
+  assert.equal(payout.version, "c2c-payout-v6-mindwave-buyer");
   assert.equal(payout.maxRatePerPair, 200);
+});
+
+test("uses the MindWave v6 buyer rates for every accepted tier", () => {
+  const payout = calculateTieredPayout([
+    { tier: "instructional", units: 1 },
+    { tier: "contextual", units: 1 },
+    { tier: "language", units: 1 },
+    { tier: "creative", units: 1 },
+    { tier: "conversational", units: 1 },
+    { tier: "rejected", units: 1 },
+  ]);
+  assert.deepEqual(payout.breakdown.map((item) => item.rate), [100, 50, 75, 25, 25, 0]);
+  assert.equal(payout.total, 275);
+  assert.equal(calculateTieredPayout([{ tier: "instructional", units: 1 }], 2).total, 200);
 });
 
 test("canonical JSON ignores client grading fields and hashes stable text", () => {

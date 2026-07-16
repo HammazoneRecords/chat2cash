@@ -25,10 +25,17 @@ test("processing endpoint enforces session ownership", () => {
   assert.match(server, /Submission ownership does not match the signed-in account/);
 });
 
-test("draft preview keeps original raw line but persisted datasets strip preview lines", () => {
-  assert.match(server, /originalLine: line/);
-  assert.match(server, /originalText: turn\.originalLine/);
-  assert.match(server, /originalLinesPreview: originalLinesPreview\.slice\(0, 300\)/);
+test("raw source preview stays in browser memory and server records stay sanitized", () => {
+  const processChatSection = server.slice(
+    server.indexOf('app.post("/api/process-chat"'),
+    server.indexOf("// Contributor requests a payout"),
+  );
+  assert.match(fileProcessor, /function sanitizeChatInBrowser/);
+  assert.match(fileProcessor, /originalText: turn\.originalLine/);
+  assert.match(fileProcessor, /sanitizedTurns: localSanitized\.turns/);
+  assert.doesNotMatch(fileProcessor, /body: JSON\.stringify\(\{\s*chatText/);
+  assert.doesNotMatch(processChatSection, /\boriginalLine\b|originalText/);
+  assert.match(processChatSection, /originalLinesPreview: \[\]/);
   assert.match(server, /dataset\.originalLinesPreview = \[\]/);
 });
 
@@ -341,7 +348,7 @@ test("profile update validates fields and never returns or stores base64 ID imag
   assert.doesNotMatch(profileHelpers, /\.\.\.safeProfile,\s*idPhoto:/);
 });
 
-test("contributors can preview before payout setup but cannot submit payable datasets without it", () => {
+test("contributors can submit before payout setup but cannot receive payout without it", () => {
   const profileHelpers = server.slice(
     server.indexOf("function sanitizeProfileForClient"),
     server.indexOf("// Cascading AI evaluator"),
@@ -363,20 +370,19 @@ test("contributors can preview before payout setup but cannot submit payable dat
   assert.match(profileHelpers, /payoutProfileRequiredMessage/);
   assert.match(profileHelpers, /if \(wipayAccount && !\/\^\[a-zA-Z0-9_/);
   assert.match(profileHelpers, /if \(wipayLink\) \{/);
-  assert.match(submitJsonSection, /if \(!hasCompletePayoutProfile\(profile\)\)/);
-  assert.match(processChatSection, /const \{ chatText, fileName, userId, draftOnly \} = req\.body/);
-  assert.match(processChatSection, /if \(!draftOnly && !hasCompletePayoutProfile\(profile\)\)/);
+  assert.doesNotMatch(submitJsonSection, /if \(!hasCompletePayoutProfile\(profile\)\)/);
+  assert.match(processChatSection, /const \{ sanitizedTurns, fileName, userId, draftOnly \} = req\.body/);
+  assert.doesNotMatch(processChatSection, /if \(!draftOnly && !hasCompletePayoutProfile\(profile\)\)/);
   assert.match(payoutQueueSection, /Contributor must finish their WiPay payout profile before admin can queue payment/);
-  assert.match(registrationForm, /WiPay details are only required before final paid submission/);
+  assert.match(registrationForm, /WiPay details are only required before payout/);
   assert.match(registrationForm, /CREATE PREVIEW ACCOUNT/);
-  assert.match(fileProcessor, /Payout setup needed before final submit/);
+  assert.match(fileProcessor, /Payout setup needed before payout/);
   assert.match(fileProcessor, /payout-profile-setup-panel/);
   assert.match(fileProcessor, /review-payout-profile-setup-panel/);
   assert.match(fileProcessor, /btn-review-save-payout-profile/);
-  assert.match(fileProcessor, /Save your WiPay payout setup first, then submit the anonymous dataset/);
-  assert.match(fileProcessor, /scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
+  assert.doesNotMatch(fileProcessor, /Save your WiPay payout setup first, then submit the anonymous dataset/);
   assert.match(fileProcessor, /disabled=\{loading\}/);
-  assert.match(fileProcessor, /aria-disabled=\{!hasPayoutProfile\}/);
+  assert.doesNotMatch(fileProcessor, /aria-disabled=\{!hasPayoutProfile\}/);
 });
 
 test("text chat payouts use JMD launch settlement independent of profile country", () => {

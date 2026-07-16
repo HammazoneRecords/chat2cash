@@ -20,9 +20,11 @@ Guides for deployment, monitoring, and troubleshooting.
 
 ```bash
 # On VPS
-cd /opt/mw/chat2cash && git pull origin main
-cd /opt/mw && docker compose build --no-cache chat2cash
-docker compose up -d chat2cash
+cd /opt/mw/chat2cash && git fetch origin main && git reset --hard origin/main
+docker build -t mw-chat2cash .
+docker stop mw-chat2cash || true
+docker rm mw-chat2cash || true
+docker run -d --name mw-chat2cash --env-file /opt/mw/chat2cash/.env -e DATA_DIR=/data -v /opt/mw/chat2cash-data:/data --network mw_mw-net --ip 172.20.0.36 -p 4001:4001 --restart unless-stopped mw-chat2cash
 
 # Verify
 docker logs mw-chat2cash --tail 10

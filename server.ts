@@ -142,7 +142,7 @@ function hasCompletePayoutProfile(profile: any) {
 }
 
 function payoutProfileRequiredMessage() {
-  return "Finish your payout profile before final submission. You can preview and download anonymized JSON without WiPay details, but paid dataset submission requires a WiPay account reference and payout link.";
+  return "Finish your payout profile before requesting or receiving payout. Dataset submission can happen first, but payout requires a WiPay account reference and payout link.";
 }
 
 function requiredAdminReason(value: any) {
@@ -565,10 +565,6 @@ app.post("/api/submit-json-draft", requireSession, (req: any, res) => {
     const userId = req.session.user.id;
     const profile = database.getProfile(userId);
     if (!profile) return res.status(404).json({ error: "Profile not found." });
-    if (!hasCompletePayoutProfile(profile)) {
-      return res.status(409).json({ error: payoutProfileRequiredMessage() });
-    }
-
     const { dialogues } = validateCanonicalJson(req.body);
     const contentHash = hashCanonicalDialogues(dialogues);
     const existing = database.getDatasetByContentHash(contentHash);
@@ -1011,10 +1007,10 @@ function contributorSubmissionSummary(dataset: any) {
 // Main Endpoint: Anonymize WhatsApp Chats & Run AI evaluation for usefulness
 app.post("/api/process-chat", requireSession, async (req: any, res) => {
   try {
-    const { chatText, fileName, userId, draftOnly } = req.body;
+    const { sanitizedTurns, fileName, userId, draftOnly } = req.body;
 
-    if (!chatText || !userId) {
-      return res.status(400).json({ error: "Missing required fields: chatText and userId." });
+    if (!Array.isArray(sanitizedTurns) || !userId) {
+      return res.status(400).json({ error: "Missing required fields: sanitizedTurns and userId." });
     }
 
     if (userId !== req.session.user.id) {
@@ -1025,12 +1021,24 @@ app.post("/api/process-chat", requireSession, async (req: any, res) => {
     if (!profile) {
       return res.status(404).json({ error: "No user profile found. Please register first for proper record-keeping." });
     }
-    if (!draftOnly && !hasCompletePayoutProfile(profile)) {
-      return res.status(409).json({ error: payoutProfileRequiredMessage() });
-    }
-    
-    // 1. Sanitize dialogue turns
-    const rawAnonymizedTurns = sanitizeWhatsAppChatLocal(chatText);
+    // The browser owns raw-file parsing and keeps original lines in memory.
+    // The server validates only sanitized turns and relative timing buckets.
+    const rawAnonymizedTurns = sanitizedTurns.map((turn: any, index: number) => {
+      const speaker = String(turn?.speaker || "");
+      const text = String(turn?.text || "").trim().slice(0, 4000);
+      const gapBucket = ["short", "medium", "long"].includes(turn?.gapBucket) ? turn.gapBucket : "short";
+      if (!/^Speaker [A-Z]$/.test(speaker) || !text) {
+        throw new Error("The uploaded chat contains an invalid sanitized turn.");
+      }
+      return {
+        index,
+        speaker,
+        text: text
+          .replace(/\+?\d{1,4}[\s-]?\(?\d{2,3}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}/g, "[Phone Redacted]")
+          .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, "[Email Redacted]"),
+        gapBucket,
+      };
+    });
     
     if (rawAnonymizedTurns.length === 0) {
       return res.status(400).json({
@@ -1054,15 +1062,6 @@ app.post("/api/process-chat", requireSession, async (req: any, res) => {
         category: "Informational",
       });
     }
-    
-    // For original dialogue preview side-by-side
-    const originalLinesPreview = rawAnonymizedTurns.map((turn, index) => ({
-      id: `turn-${index}`,
-      speaker: turn.speaker,
-      originalText: turn.originalLine,
-      cleanedText: `[${turn.speaker}]: ${turn.text}`,
-      isUseful: turn.text.split(/\s+/).length > 3, // Initial local heuristic
-    }));
     
     // Calculate size stats
     const totalLinesAnalyzed = rawAnonymizedTurns.length;
@@ -1207,22 +1206,13 @@ Respond strictly in valid JSON:
       index,
       speaker: turn.speaker,
       text: turn.text,
-      gapBucket: "short" as const,
+      gapBucket: turn.gapBucket,
     }));
     const segments = segmentConversation(normalizedMessages);
     const grades = segments.map(segment => ({ segment, grade: gradeSegment(normalizedMessages, segment) }));
     const contextSignals = detectContextSignals(normalizedMessages);
     applyContextAwareDialogueLabels(dialogues, grades);
     const totalUsefulLines = dialogues.filter((d: any) => d.isUseful).length;
-
-    // Mirror updates back to raw lines preview so they match visually in UI
-    originalLinesPreview.forEach((line, idx) => {
-      // Find matching dialogue turn
-      const dialogueIdx = Math.floor(idx / 2);
-      if (dialogues[dialogueIdx]) {
-        line.isUseful = dialogues[dialogueIdx].isUseful;
-      }
-    });
 
     const tierInputs = buildDialoguePayoutInputs(dialogues, grades);
     const payout = calculateTieredPayout(tierInputs, (profile as any).demographicOptIn ? 2 : 1);
@@ -1280,7 +1270,7 @@ Respond strictly in valid JSON:
         payout,
       },
       dialogues,
-      originalLinesPreview: originalLinesPreview.slice(0, 300), // Cap preview list for rendering speed
+      originalLinesPreview: [],
     };
 
     // Draft mode is intentionally non-persistent: no dataset, payout, strike, or receipt is created.
@@ -1298,7 +1288,7 @@ Respond strictly in valid JSON:
             ...dataset.metadata,
             payoutPendingContextReview: true,
           },
-          originalLinesPreview: originalLinesPreview.slice(0, 300),
+          originalLinesPreview: [],
         },
       });
     }

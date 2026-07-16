@@ -194,7 +194,7 @@
 - **Verification:** All test commands run against temporary fixtures/databases.
 
 ### C2C-061 — Add browser end-to-end tests
-- **Status:** PENDING
+- **Status:** IN PROGRESS
 - **Deliverable:** ZIP preview, JSON export/import, explicit submit, moderator review, payout, admin, and mobile workflows.
 - **Depends on:** C2C-050, C2C-051, C2C-052
 - **Verification:** Desktop and mobile E2E suite.
@@ -213,9 +213,9 @@
 
 ## Verification Snapshot
 
-- `corepack pnpm test` passes: lint plus 24 unit/security/database/responsive tests.
+- `corepack pnpm test` passes: lint plus 55 unit/security/database/responsive tests.
 - `corepack pnpm build` passes: client PWA and production server bundle.
 - Payout authorization invariants and idempotent disbursement checks are covered by the unit/security suite.
 - Production-mode HTTP smoke check passes: `/api/health` returns 200, unauthenticated moderation returns 401, and reconciliation returns aggregate-only data.
 - `corepack pnpm test:api` passes against a temporary production database.
-- Browser E2E, temporary-database migration/race tests, and full role lifecycle tests are still required before release.
+- Local release gate now passes; browser E2E, live role lifecycle, live payout proof, and deployment verification remain before release.

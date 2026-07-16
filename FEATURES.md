@@ -12,9 +12,9 @@
 | Client-side PII anonymisation | 2026-06-23 | Names → Speaker A/B, phones/emails redacted in browser before any network call |
 | Photo ID redaction | 2026-06-23 | Face + TRN burned on canvas locally — server never receives raw image |
 | AI quality evaluation | 2026-06-23 | Hybrid: local heuristics pre-filter → AI for ambiguous pairs |
-| Payout calculation | 2026-06-23 | $0.50–$4 JMD per useful turn, quality-scaled; 2x demographic multiplier |
+| Payout calculation | 2026-07-15 | JMD $25/$50/$75/$100 tiers, v6 buyer pricing; verified multiplier capped at JMD $200 per accepted pair |
 | Dataset download | 2026-06-23 | JSON + CSV export |
-| WiPay payout flow | 2026-06-23 | 7–14 day clearing; admin approval queue |
+| WiPay payout flow | 2026-07-15 | WiPay optional at signup/submission; required before payout; 7–14 day review and admin approval queue |
 | Public reconciliation ledger | 2026-06-23 | Transparency on all payouts |
 | Better Auth (session cookie) | 2026-06-23 | Auth layer |
 | Rate limiting | 2026-06-23 | 100 req/min per IP |
@@ -51,7 +51,7 @@
 | Feature | Spec date | Notes |
 |---|---|---|
 | 2 example voice notes with estimated payout | 2026-06-23 | Audio samples with playback + payout range shown beside each |
-| WiPay country conversions | 2026-06-23 | Same as earn site — show rates in TTD/BBD/GYD/XCD/CAD/USD |
+| WiPay country conversions | 2026-06-23 | Deferred; launch text-chat settlement is JMD |
 | Voice notes full product | 2026-06-23 | $300–$7,000 JMD range; separate intake from text chat |
 
 ---

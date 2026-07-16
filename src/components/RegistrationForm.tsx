@@ -216,7 +216,7 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
     setError("");
 
     if (!fullName.trim() || !email.trim() || !phone.trim() || !age || !gender.trim() || !town.trim()) {
-      setError("Please complete all required fields: name, email, phone, town, age, and gender. You can add WiPay details before final submission.");
+      setError("Please complete all required fields: name, email, phone, town, age, and gender. You can add WiPay details before payout.");
       return;
     }
 
@@ -284,7 +284,7 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
         <span className="text-[10px] uppercase font-bold text-emerald-400 font-mono tracking-widest block">WHO ARE YOU?</span>
         <h2 className="text-2xl font-bold font-display text-white tracking-tight">Create Your Seller Profile</h2>
         <p className="text-xs text-slate-400 leading-relaxed">
-          Create an account to preview anonymization and review your cleaned JSON. WiPay details are only required before final paid submission.
+          Create an account to preview anonymization and review your cleaned JSON. WiPay details are only required before payout.
         </p>
       </div>
 
@@ -540,12 +540,12 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
           <div className="flex items-center justify-between">
             <label htmlFor="reg-wipayAccount" className="text-xs font-bold text-emerald-300 flex items-center gap-1.5 font-mono">
               <Landmark className="w-3.5 h-3.5 text-emerald-400" />
-              WIPAY MERCHANT ACCOUNT NUMBER <span className="text-slate-500">(required before final submit)</span>
+              WIPAY MERCHANT ACCOUNT NUMBER <span className="text-slate-500">(required before payout)</span>
             </label>
             <span className="text-[9px] text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-800/40 font-mono font-semibold">CAN ADD LATER</span>
           </div>
           <p className="text-[11px] text-slate-400 leading-normal">
-            Add this now if you have it. You can still create an account and preview anonymization without it, but paid submission is locked until this is complete.
+            Add this now if you have it. You can create an account, review, and submit chats without it; payout is held until this is complete.
           </p>
           <div className="relative">
             <ShieldCheck className="absolute left-3 top-3.5 w-4 h-4 text-emerald-400" />
@@ -564,10 +564,10 @@ export default function RegistrationForm({ onRegisterSuccess, onSwitchToLogin, d
         <div className="space-y-2.5 p-5 rounded-2xl bg-emerald-950/20 border border-emerald-900/40">
           <label htmlFor="reg-wipayLink" className="text-xs font-bold text-emerald-300 flex items-center gap-1.5 font-mono">
             <Landmark className="w-3.5 h-3.5 text-emerald-400" />
-            WIPAY PAYOUT LINK <span className="text-slate-500">(required before final submit)</span>
+            WIPAY PAYOUT LINK <span className="text-slate-500">(required before payout)</span>
           </label>
           <p className="text-[11px] text-slate-400 leading-normal">
-            Provide your personalized WiPay payout link before paid submission. <a href="https://wipaycaribbean.com/jamaica" target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">Get your link</a>
+            Provide your personalized WiPay payout link before payout. <a href="https://wipaycaribbean.com/jamaica" target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">Get your link</a>
           </p>
           <div className="relative">
             <ShieldCheck className="absolute left-3 top-3.5 w-4 h-4 text-emerald-400" />

@@ -3,7 +3,7 @@
 **Date:** 2026-06-23  
 **Last verified:** 2026-07-06  
 **Prepared by:** MindWave JA  
-**Status:** ✅ READY FOR USERS — Pending Oreluwa RunPod activation
+**Status:** MVP implementation verified locally; live contributor/admin and payout walkthrough still required
 
 ---
 
@@ -39,9 +39,9 @@
 | Client-side PII anonymization | ✅ | Names → Speaker A/B, phones/emails redacted in browser before any network call |
 | Photo ID redaction (face + TRN) | ✅ | Burns in canvas locally; server never receives raw image |
 | AI quality evaluation | ✅ | Hybrid: local heuristics pre-filter → AI for ambiguous pairs |
-| Payout calculation | ✅ | $0.50–$4 JMD per useful turn, quality-scaled; 2x demographic multiplier |
+| Payout calculation | ✅ | JMD $25/$50/$75/$100 buyer tiers, v6 pricing; multiplier capped at JMD $200 per accepted pair |
 | Dataset download (JSON + CSV) | ✅ | |
-| WiPay payout flow | ✅ | 7-14 day clearing; admin approval queue |
+| WiPay payout flow | ✅ | Optional at signup/submission; required before payout; 7-14 day review and admin approval queue |
 | Public reconciliation ledger | ✅ | |
 
 ### Auth & Security
@@ -66,14 +66,14 @@
 | Feature | Status |
 |---|---|
 | 2 CTA buttons (Chat2Cash signup + Voice Notes notify) | ✅ |
-| Price comparison: text ($0.50–$4 JMD) vs voice ($300–$7,000 JMD) | ✅ |
+| Price comparison: text (JMD $25–$200 per accepted pair) vs voice waitlist | ✅ |
 | Voice type caveat copy | ✅ |
 | Live tally stats card (chats, messages, JMD paid) | ✅ |
-| Short text example (~$0.60 JMD) | ✅ |
-| Rich text example (~$3.80 JMD) | ✅ |
-| Voice notes section with 300–7,000 JMD range | ✅ |
+| Short text example (JMD buyer-tier example) | ✅ |
+| Rich text example (JMD buyer-tier example) | ✅ |
+| Voice notes section marked waitlist-only | ✅ |
 | 2 placeholder voice note cards (with payout badges) | ✅ |
-| Currency conversion guide (JMD / TTD / BBD) | ✅ |
+| Currency conversion guide | Deferred for launch; text-chat settlement is JMD |
 | Voice notify modal (name, town, age, country, email → DB) | ✅ |
 
 ### PWA

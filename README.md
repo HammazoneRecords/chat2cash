@@ -1,6 +1,6 @@
 # Chat2Cash 💬➡️💰
 
-Chat2Cash is an innovative full-stack Web Application that converts private WhatsApp text chat threads into highly valuable, instruction-optimized training samples for Large Language Models (LLMs), with direct settlements paid in regional currencies (JMD, TTD, BBD, USD) via WiPay.
+Chat2Cash converts private WhatsApp text chat threads into anonymized training samples for MindWave, with launch settlement in JMD via WiPay after review.
 
 The solution ensures rigorous privacy standards by executing all sanitization and photo ID redactions locally inside the browser before data touches server-side interfaces.
 
@@ -9,12 +9,12 @@ The solution ensures rigorous privacy standards by executing all sanitization an
 ## 🚀 Key Features
 
 *   **Tactile Compliance & ID Redaction**: A custom identity component utilizing device cameras (and manual uploader) that places secure, permanent black redaction grids over faces and Taxpayer Registration Numbers (TRN) to satisfy compliance procedures without leaking sensitive details.
-*   **Zero-Leak Local Anonymizer**: Text files are parsed and stripped of legal names, telephone numbers, emails, and dates directly in the client, mapping speaker terms to random pseudonym markers (e.g., *Speaker A*, *Speaker B*).
-*   **Geographic Settlement Targeting**: Collects exact settlement location demographics with options for designated **Settlement Country** and a separate, dedicated **Town/City** submission field.
+*   **Browser-Only Review Privacy**: Text files are read and sanitized in the browser; original lines remain available only in local review memory while submitted records contain sanitized dialogue and relative timing metadata.
+*   **Geographic Profile Context**: Collects country and town metadata for contributor context; launch text-chat settlement is JMD.
 *   **Dual-Tier Demographic Multiplier**: Registers sellers with age, gender/identification (Male, Female, Intersex (formerly referred to locally as Hermaphrodite)), education levels, and household details, unleashing a **2x award payout multiplier** for opt-in demographic profiles.
 *   **Interactive Help & FAQ Hub**: A responsive, categorized troubleshooting panel embedded in the home footer explaining processing timelines, pricing structures, and privacy practices.
-*   **DeepSeek Evaluation Intelligence**: Employs DeepSeek's `deepseek-chat` model server-side to assess training utility, scoring instructional density while discarding redundant chit-chat, automated system messages, and untranslatable/generic dialect.
-*   **WiPay Caribbean Hub**: Logs validated proceeds straight onto a public reconciliation ledger with secure tracking IDs destined for user WiPay merchant pockets.
+*   **DeepSeek Evaluation Intelligence**: Employs DeepSeek's `deepseek-chat` model server-side to assess training utility while preserving clear Patois, code-switching, follow-up context, and cultural insight.
+*   **WiPay Caribbean Hub**: Stores payout setup for reviewed datasets; admins manually disburse approved JMD payouts and record receipt proof.
 
 ---
 
